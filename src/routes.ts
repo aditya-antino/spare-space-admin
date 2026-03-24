@@ -1,0 +1,17 @@
+export const ROUTES = {
+  login: "/",
+  dashboard: "/dashboard",
+  profile: "/dashboard/profile",
+  users: "/dashboard/users",
+  properties: "/dashboard/properties",
+  bookings: "/dashboard/bookings",
+  approvals: "/dashboard/approvals",
+  approvalDetails: "/dashboard/approvals/:id",
+  buildApprovalDetails: (id: number) => `/dashboard/approvals/${id}`,
+  reviews: "/dashboard/reviews",
+  userReviews: "/dashboard/userReviews",
+  governmentId: "/dashboard/government-id",
+  cancelRequests: "/dashboard/cancel-requests",
+  notifications: "/dashboard/notifications",
+  notFound: "*",
+};
