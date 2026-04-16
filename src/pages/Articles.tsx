@@ -42,6 +42,8 @@ const Articles = () => {
     const navigate = useNavigate();
     const [articles, setArticles] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -67,11 +69,14 @@ const Articles = () => {
     const fetchArticles = async () => {
         setLoading(true);
         try {
-            const response = await getArticles();
+            const response = await getArticles(currentPage);
             if (response.status === 200) {
-                const { content } = response.data.data;
+                const { content, pagination } = response.data.data;
                 const sortedArticles = (content || []).sort((a: any, b: any) => a.id - b.id);
                 setArticles(sortedArticles);
+                if (pagination) {
+                    setTotalPages(pagination.totalPages);
+                }
             }
         } catch (error) {
             handleApiError(error);
@@ -94,6 +99,9 @@ const Articles = () => {
 
     useEffect(() => {
         fetchArticles();
+    }, [currentPage]);
+
+    useEffect(() => {
         fetchCategories();
     }, []);
 
@@ -126,10 +134,12 @@ const Articles = () => {
         setIsCreating(true);
         try {
             const { categoryId, ...rest } = createForm;
+            const articleSuffix = createForm.articleType === "host" ? "article-host" : "article-guest";
+            const uniqueId = Math.random().toString(36).substring(2, 8);
             const payload = {
                 ...rest,
                 author_name: createForm.author_name || "Admin",
-                slug: generateSlug(createForm.title),
+                slug: `${generateSlug(createForm.title)}-${articleSuffix}-${uniqueId}`,
                 type: "article",
                 sub_cat_id: parseInt(categoryId)
             };
@@ -248,8 +258,8 @@ const Articles = () => {
 
     return (
         <DashboardLayout title="Articles">
-            <div className="space-y-6">
-                <div className="flex justify-between items-center">
+            <div className="flex flex-col h-full space-y-6">
+                <div className="flex justify-between items-center shrink-0">
                     <h2 className="text-xl font-semibold">Article List</h2>
                     <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
@@ -257,11 +267,16 @@ const Articles = () => {
                     </Button>
                 </div>
 
-                <DataTable
-                    data={articles}
-                    columns={columns}
-                    loading={loading}
-                />
+                <div className="flex-1 min-h-[400px]">
+                    <DataTable
+                        data={articles}
+                        columns={columns}
+                        loading={loading}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
             </div>
 
             {/* Create Article Dialog */}

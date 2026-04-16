@@ -69,7 +69,7 @@ const GuestBookingsTable: React.FC<GuestBookingsTableProps> = ({
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       confirmed: {
-        label: "Confirmed",
+        label: "Approved",
         className: "bg-green-100 text-green-800 border-green-200",
       },
       cancelled: {

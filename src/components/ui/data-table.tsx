@@ -222,16 +222,18 @@ export const DataTable = <T,>({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full space-y-4">
       {searchable && (
-        <SearchBar
-          query={searchQuery}
-          placeholder={searchPlaceholder}
-          onChange={handleSearch}
-        />
+        <div className="shrink-0">
+          <SearchBar
+            query={searchQuery}
+            placeholder={searchPlaceholder}
+            onChange={handleSearch}
+          />
+        </div>
       )}
 
-      <div className="rounded-md border border-border overflow-hidden">
+      <div className="flex-1 rounded-md border border-border overflow-auto min-h-0">
         <Table>
           <TableHeader>
             <TableRow>{renderedHeaders}</TableRow>
@@ -240,11 +242,13 @@ export const DataTable = <T,>({
         </Table>
       </div>
 
-      <PaginationControls
-        totalPages={totalPages}
-        currentPage={currentPage}
-        onPageChange={onPageChange}
-      />
+      <div className="shrink-0 mt-auto">
+        <PaginationControls
+          totalPages={totalPages}
+          currentPage={currentPage}
+          onPageChange={onPageChange}
+        />
+      </div>
     </div>
   );
 };

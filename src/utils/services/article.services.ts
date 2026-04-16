@@ -1,7 +1,7 @@
 import { axiosInstance } from "../axiosInstance";
 
-export const getArticles = async () => {
-    const response = await axiosInstance.get(`admin/content?type=article`);
+export const getArticles = async (page: number = 1, limit: number = 10) => {
+    const response = await axiosInstance.get(`admin/content?type=article&page=${page}&limit=${limit}`);
     return response;
 };
 

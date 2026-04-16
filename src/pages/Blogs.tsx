@@ -36,6 +36,8 @@ const Blogs = () => {
     const navigate = useNavigate();
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -56,10 +58,13 @@ const Blogs = () => {
     const fetchBlogs = async () => {
         setLoading(true);
         try {
-            const response = await getBlogs();
+            const response = await getBlogs(currentPage);
             if (response.status === 200) {
-                const { content } = response.data.data;
+                const { content, pagination } = response.data.data;
                 setBlogs(content || []);
+                if (pagination) {
+                    setTotalPages(pagination.totalPages);
+                }
             }
         } catch (error) {
             handleApiError(error);
@@ -69,7 +74,7 @@ const Blogs = () => {
     };
     useEffect(() => {
         fetchBlogs();
-    }, []);
+    }, [currentPage]);
 
     const handleDeleteClick = (blog: any) => {
         setBlogToDelete(blog);
@@ -99,10 +104,11 @@ const Blogs = () => {
         }
         setIsCreating(true);
         try {
+            const uniqueId = Math.random().toString(36).substring(2, 8);
             const payload: any = {
                 ...createForm,
                 author_name: createForm.author_name || "Admin",
-                slug: generateSlug(createForm.title),
+                slug: `${generateSlug(createForm.title)}-blog-${uniqueId}`,
                 type: "blog"
             };
             if (!payload.img_url) delete payload.img_url;
@@ -230,8 +236,8 @@ const Blogs = () => {
 
     return (
         <DashboardLayout title="Blogs">
-            <div className="space-y-6">
-                <div className="flex justify-between items-center">
+            <div className="flex flex-col h-full space-y-6">
+                <div className="flex justify-between items-center shrink-0">
                     <h2 className="text-xl font-semibold">Blog List</h2>
                     <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
@@ -239,11 +245,16 @@ const Blogs = () => {
                     </Button>
                 </div>
 
-                <DataTable
-                    data={blogs}
-                    columns={columns}
-                    loading={loading}
-                />
+                <div className="flex-1 min-h-[400px]">
+                    <DataTable
+                        data={blogs}
+                        columns={columns}
+                        loading={loading}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
             </div>
 
             {/* Create Blog Dialog */}
