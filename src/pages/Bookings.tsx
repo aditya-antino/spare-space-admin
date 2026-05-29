@@ -20,11 +20,14 @@ interface Booking {
   status: "pending" | "approved" | "rejected" | "confirmed" | "cancelled";
   totalAmount: string;
   created_at: string;
-  Payments: [
-    {
-      status: string;
-    }
-  ];
+  Payments: {
+    status: string;
+    created_at: string;
+  }[];
+  displayPayment?: {
+    status: string;
+    created_at: string;
+  };
   Space: {
     id: number;
     title: string;
@@ -67,7 +70,34 @@ const Bookings = () => {
       const response = await getBookings(page);
       if (response.status === 200) {
         const { bookingList, pagination: paginationData } = response.data.data;
-        setBookings(bookingList || []);
+
+        const flattenedRows = (bookingList || [])
+          .map((booking: Booking) => {
+            if (booking.Payments && booking.Payments.length > 0) {
+              const sortedPayments = [...booking.Payments].sort((a, b) => {
+                const dateA = new Date(a.created_at).getTime();
+                const dateB = new Date(b.created_at).getTime();
+                return dateB - dateA;
+              });
+              return { ...booking, displayPayment: sortedPayments[0] };
+            }
+            return booking;
+          })
+          .sort((a, b) => {
+            const dateA = new Date(
+              a.displayPayment?.created_at || a.created_at
+            ).getTime();
+            const dateB = new Date(
+              b.displayPayment?.created_at || b.created_at
+            ).getTime();
+
+            if (isNaN(dateA)) return 1;
+            if (isNaN(dateB)) return -1;
+
+            return dateB - dateA;
+          });
+
+        setBookings(flattenedRows);
         setPagination({
           totalPages: paginationData?.totalPages || 1,
           currentPage: paginationData?.currentPage || 1,
@@ -100,7 +130,34 @@ const Bookings = () => {
         if (response.status === 200) {
           const { bookingList, pagination: paginationData } =
             response.data.data;
-          setBookings(bookingList || []);
+
+          const flattenedRows = (bookingList || [])
+            .map((booking: Booking) => {
+              if (booking.Payments && booking.Payments.length > 0) {
+                const sortedPayments = [...booking.Payments].sort((a, b) => {
+                  const dateA = new Date(a.created_at).getTime();
+                  const dateB = new Date(b.created_at).getTime();
+                  return dateB - dateA;
+                });
+                return { ...booking, displayPayment: sortedPayments[0] };
+              }
+              return booking;
+            })
+            .sort((a, b) => {
+              const dateA = new Date(
+                a.displayPayment?.created_at || a.created_at
+              ).getTime();
+              const dateB = new Date(
+                b.displayPayment?.created_at || b.created_at
+              ).getTime();
+
+              if (isNaN(dateA)) return 1;
+              if (isNaN(dateB)) return -1;
+
+              return dateB - dateA;
+            });
+
+          setBookings(flattenedRows);
           setPagination({
             totalPages: paginationData?.totalPages || 1,
             currentPage: paginationData?.currentPage || 1,
@@ -131,9 +188,11 @@ const Bookings = () => {
   };
 
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-";
     try {
       const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "-";
       return date.toLocaleString("en-IN", {
         day: "2-digit",
         month: "short",
@@ -209,7 +268,7 @@ const Bookings = () => {
       header: "Booked On",
       cell: (booking: Booking) => (
         <div className="min-w-[180px]">
-          {formatDate(booking.created_at)}
+          {formatDate(booking.displayPayment?.created_at || booking.created_at)}
         </div>
       ),
     },
@@ -287,19 +346,23 @@ const Bookings = () => {
     {
       key: "payStatus",
       header: "Payment",
-      cell: (booking: Booking) => (
-        <>
-          {booking?.Payments?.[0]?.status ? (
-            <span className="px-2 py-1 border-2 border-yellow-400 text-xs rounded-full">
-              {capitalizeWord(booking.Payments[0].status)}
-            </span>
-          ) : (
-            <span className="px-2 py-1 text-xs text-center rounded-full">
-              -
-            </span>
-          )}
-        </>
-      ),
+      cell: (booking: Booking) => {
+        const displayStatus = booking.displayPayment?.status;
+
+        return (
+          <>
+            {displayStatus ? (
+              <span className="px-2 py-1 border-2 border-yellow-400 text-xs rounded-full">
+                {capitalizeWord(displayStatus)}
+              </span>
+            ) : (
+              <span className="px-2 py-1 text-xs text-center rounded-full">
+                -
+              </span>
+            )}
+          </>
+        );
+      },
     },
     {
       key: "status",
@@ -307,7 +370,7 @@ const Bookings = () => {
       cell: (booking: Booking) => {
         const isConfirmedWithPayment =
           booking.status === "confirmed" &&
-          booking?.Payments?.[0]?.status === "captured";
+          booking.displayPayment?.status === "captured";
 
         return (
           <span

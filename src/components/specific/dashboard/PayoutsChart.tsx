@@ -1,4 +1,4 @@
-import { BookingStatsData } from "@/types";
+import { HostPayoutStatsData } from "@/types";
 import {
   AreaChart,
   Area,
@@ -12,7 +12,7 @@ import {
 import { BaseChart, TimeRangeDropdown } from "../../index";
 
 interface PayoutsChartProps {
-  data: BookingStatsData;
+  data: HostPayoutStatsData;
   timeRange: string;
   onTimeRangeChange: (range: string) => void;
   loading?: boolean;
@@ -26,7 +26,7 @@ function PayoutsChart({
   loading = false,
   error = false,
 }: PayoutsChartProps) {
-  const currentData = data[timeRange as keyof BookingStatsData] || [];
+  const currentData = data ? (data[timeRange as keyof HostPayoutStatsData] || []) : [];
 
   const xAxisKey = timeRange === "daily" ? "date" : "period";
 
@@ -60,7 +60,7 @@ function PayoutsChart({
           <Tooltip
             formatter={(value: number) => [
               `₹${value.toLocaleString()}`,
-              "Revenue",
+              "Payout",
             ]}
             contentStyle={{
               backgroundColor: "#FFFFFF",
@@ -71,10 +71,10 @@ function PayoutsChart({
           <Legend />
           <Area
             type="monotone"
-            dataKey="revenue"
+            dataKey="payout"
             stroke="#C98D02"
             fill="#C98D02"
-            name="Revenue"
+            name="Payout"
             strokeWidth={2}
             fillOpacity={0.6}
           />

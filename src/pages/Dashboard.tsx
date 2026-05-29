@@ -344,6 +344,9 @@ function Dashboard() {
   const activityData = data.activityBookingData;
   const revenueByHostData = data.revenueByActiveHost;
   const commssionData = data.commissionStats;
+  const payoutData = Array.isArray(data.hostPayoutStats)
+    ? data.hostPayoutStats[0]
+    : data.hostPayoutStats;
 
   const quickActions = [
     {
@@ -456,7 +459,7 @@ function Dashboard() {
             </ErrorBoundary>
             <ErrorBoundary>
               <PayoutsChart
-                data={bookingStats}
+                data={payoutData}
                 timeRange={payoutTimeRange}
                 onTimeRangeChange={setPayoutTimeRange}
                 loading={loading}

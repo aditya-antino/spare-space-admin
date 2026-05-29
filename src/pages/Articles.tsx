@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { StaticPageArticle } from "@/components";
 import {
     Select,
@@ -53,6 +54,7 @@ const Articles = () => {
         articleType: "guest",
         categoryId: "",
         author_name: "",
+        metaDescription: "",
     });
 
     const [categories, setCategories] = useState<any[]>([]);
@@ -133,11 +135,16 @@ const Articles = () => {
         }
         setIsCreating(true);
         try {
-            const { categoryId, ...rest } = createForm;
+            const { categoryId, metaDescription, ...rest } = createForm;
             const articleSuffix = createForm.articleType === "host" ? "article-host" : "article-guest";
             const uniqueId = Math.random().toString(36).substring(2, 8);
+            const finalMetaDescription = metaDescription.trim()
+                ? metaDescription.trim()
+                : stripHtml(createForm.description).trim().substring(0, 160);
+
             const payload = {
                 ...rest,
+                meta_description: finalMetaDescription,
                 author_name: createForm.author_name || "Admin",
                 slug: `${generateSlug(createForm.title)}-${articleSuffix}-${uniqueId}`,
                 type: "article",
@@ -147,7 +154,7 @@ const Articles = () => {
             if (response.status === 200 || response.status === 201) {
                 toast.success("Article created successfully");
                 setIsCreateDialogOpen(false);
-                setCreateForm({ title: "", description: "", articleType: "guest", categoryId: "", author_name: "" });
+                setCreateForm({ title: "", description: "", articleType: "guest", categoryId: "", author_name: "", metaDescription: "" });
                 fetchArticles();
             }
         } catch (error) {
@@ -288,7 +295,12 @@ const Articles = () => {
                     <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
                         <div className="grid gap-2">
-                            <Label htmlFor="create-title">Title</Label>
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="create-title">Title</Label>
+                                <span className={`text-xs ${createForm.title.length > 60 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-gray-500 font-medium"}`}>
+                                    {createForm.title.length} chars (For SEO friendly, try to keep under 60 characters)
+                                </span>
+                            </div>
                             <Input
                                 id="create-title"
                                 placeholder="Enter article title"
@@ -303,6 +315,20 @@ const Articles = () => {
                                 placeholder="Enter author name"
                                 value={createForm.author_name}
                                 onChange={(e) => setCreateForm(prev => ({ ...prev, author_name: e.target.value }))}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="create-meta-description">Meta Description</Label>
+                                <span className={`text-xs ${createForm.metaDescription.length > 160 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-gray-500 font-medium"}`}>
+                                    {createForm.metaDescription.length} chars (Recommended under 160 characters)
+                                </span>
+                            </div>
+                            <Textarea
+                                id="create-meta-description"
+                                placeholder="Enter meta description for SEO (defaults to first 160 characters of description)"
+                                value={createForm.metaDescription}
+                                onChange={(e) => setCreateForm(prev => ({ ...prev, metaDescription: e.target.value }))}
                             />
                         </div>
                         <div className="grid gap-2">
@@ -378,7 +404,16 @@ const Articles = () => {
                             <div className="min-h-[400px] border rounded-md overflow-hidden bg-white">
                                 <StaticPageArticle
                                     content={createForm.description}
-                                    onBlur={(newContent) => setCreateForm(prev => ({ ...prev, description: newContent }))}
+                                    onBlur={(newContent) => {
+                                        setCreateForm(prev => {
+                                            const updated = { ...prev, description: newContent };
+                                            if (!prev.metaDescription) {
+                                                const stripped = stripHtml(newContent).trim();
+                                                updated.metaDescription = stripped.substring(0, 160);
+                                            }
+                                            return updated;
+                                        });
+                                    }}
                                     editorRef={editorRef}
                                 />
                             </div>

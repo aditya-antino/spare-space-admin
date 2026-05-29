@@ -180,10 +180,10 @@ export const DataTable = <T,>({
   searchable = false,
   searchPlaceholder = "Search...",
   searchQuery = "",
-  handleSearch = () => {},
+  handleSearch = () => { },
   totalPages = 1,
   currentPage = 1,
-  onPageChange = () => {},
+  onPageChange = () => { },
   loading = false,
   shimmerRowsCount = 10,
 }: DataTableProps<T>) => {

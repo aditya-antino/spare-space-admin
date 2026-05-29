@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { StaticPageArticle, StaticPageFooter } from "@/components";
 import { getArticleDetails, updateArticle, getArticleCategories, createArticleCategory } from "@/utils/services/article.services";
 import { handleApiError } from "@/hooks";
@@ -30,6 +31,7 @@ const ArticleDetails = () => {
         articleType: "guest",
         categoryId: "",
         author_name: "",
+        metaDescription: "",
     });
     const [categories, setCategories] = useState<any[]>([]);
     const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -69,6 +71,7 @@ const ArticleDetails = () => {
                     articleType: details.articleType || "guest",
                     categoryId: details.Category?.id?.toString() || details.sub_cat_id?.toString() || "",
                     author_name: details.author_name || "",
+                    metaDescription: details.metaDescription || "",
                 });
             }
         } catch (error) {
@@ -99,13 +102,28 @@ const ArticleDetails = () => {
         }
     };
 
+    const stripHtml = (html: string) => {
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+        return temp.textContent || temp.innerText || "";
+    };
+
     const handleSave = async () => {
         if (!articleId) return;
+        if (!form.title || !form.description || !form.articleType || !form.categoryId) {
+            toast.error("Please fill in all required fields");
+            return;
+        }
         setIsSaving(true);
         try {
-            const { categoryId, ...rest } = form;
+            const { categoryId, metaDescription, ...rest } = form;
+            const finalMetaDescription = form.metaDescription.trim()
+                ? form.metaDescription.trim()
+                : stripHtml(form.description).trim().substring(0, 160);
+
             const payload = {
                 ...rest,
+                meta_description: finalMetaDescription,
                 author_name: form.author_name || "Admin",
                 slug: generateSlug(form.title),
                 type: "article",
@@ -132,7 +150,12 @@ const ArticleDetails = () => {
                     <div className="grid gap-4">
 
                         <div className="grid gap-2">
-                            <Label htmlFor="title">Title</Label>
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="title">Title</Label>
+                                <span className={`text-xs ${form.title.length > 60 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-gray-500 font-medium"}`}>
+                                    {form.title.length} chars (For SEO friendly, try to keep under 60 characters)
+                                </span>
+                            </div>
                             <Input
                                 id="title"
                                 placeholder="Enter article title"
@@ -147,6 +170,20 @@ const ArticleDetails = () => {
                                 placeholder="Enter author name"
                                 value={form.author_name}
                                 onChange={(e) => setForm(prev => ({ ...prev, author_name: e.target.value }))}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="meta-description">Meta Description</Label>
+                                <span className={`text-xs ${form.metaDescription.length > 160 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-gray-500 font-medium"}`}>
+                                    {form.metaDescription.length} chars (Recommended under 160 characters)
+                                </span>
+                            </div>
+                            <Textarea
+                                id="meta-description"
+                                placeholder="Enter meta description for SEO (defaults to first 160 characters of description)"
+                                value={form.metaDescription}
+                                onChange={(e) => setForm(prev => ({ ...prev, metaDescription: e.target.value }))}
                             />
                         </div>
                         <div className="grid gap-2">
@@ -222,7 +259,16 @@ const ArticleDetails = () => {
                             <div className="min-h-[400px] border rounded-md overflow-hidden">
                                 <StaticPageArticle
                                     content={form.description}
-                                    onBlur={(newContent) => setForm(prev => ({ ...prev, description: newContent }))}
+                                    onBlur={(newContent) => {
+                                        setForm(prev => {
+                                            const updated = { ...prev, description: newContent };
+                                            if (!prev.metaDescription) {
+                                                const stripped = stripHtml(newContent).trim();
+                                                updated.metaDescription = stripped.substring(0, 160);
+                                            }
+                                            return updated;
+                                        });
+                                    }}
                                     editorRef={editorRef}
                                 />
                             </div>
