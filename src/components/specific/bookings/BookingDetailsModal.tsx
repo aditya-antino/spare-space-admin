@@ -34,6 +34,8 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     attendees = 0,
     status = 'N/A',
     isGst: showGstInvoiceDownloadBTN = false,
+    discountAmount = 0,
+    couponCode = "",
     Financial: {
       baseAmount = 0,
       hostGst = false,
@@ -64,7 +66,8 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const totalGuestSGST = Number(sgstAmount) + Number(guestPlatformFeeSgstAmount);
   const totalGuestGST = totalGuestCGST + totalGuestSGST;
 
-  const guestTotalAmount = guestSubtotal + totalGuestGST;
+  const discount = Number(discountAmount || 0);
+  const guestTotalAmount = Math.max(0, guestSubtotal + totalGuestGST - discount);
 
   // Pre-compute GST items for guest display
   const guestGSTItems = useMemo(() => formatGSTForDisplay(
@@ -278,6 +281,17 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </p>
                 </div>
               ))}
+
+              {discount > 0 && (
+                <div className="flex justify-between text-red-600 font-medium">
+                  <p className="text-sm">
+                   Admin Discount {couponCode ? `(${couponCode})` : ""}
+                  </p>
+                  <p className="text-sm">
+                    -{formatCurrency(discount)}
+                  </p>
+                </div>
+              )}
 
               <div className="flex justify-between border-t border-gray-200 pt-2">
                 <p className="text-gray-900 text-sm font-semibold">

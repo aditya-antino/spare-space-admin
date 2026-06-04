@@ -29,6 +29,7 @@ import {
   BlogDetails,
   Articles,
   ArticlesDetails,
+  Coupons,
 } from "@/pages";
 
 const NavigationContainer = () => {
@@ -77,6 +78,7 @@ const NavigationContainer = () => {
           <Route path={ROUTES.blogDetails} element={<BlogDetails />} />
           <Route path={ROUTES.articles} element={<Articles />} />
           <Route path={ROUTES.articleDetails} element={<ArticlesDetails />} />
+          <Route path={ROUTES.coupons} element={<Coupons />} />
         </Route>
 
         <Route path={ROUTES.notFound} element={<ErrorPage />} />

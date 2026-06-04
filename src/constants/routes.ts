@@ -29,5 +29,6 @@ export const ROUTES = {
   articles: "/dashboard/articles",
   articleDetails: "/dashboard/articles/:slug",
   buildArticleDetails: (slug: string) => `/dashboard/articles/${slug}`,
+  coupons: "/dashboard/coupons",
   notFound: "*",
 };

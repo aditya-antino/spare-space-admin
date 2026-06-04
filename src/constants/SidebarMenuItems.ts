@@ -14,6 +14,7 @@ import {
   Banknote,
   FileBarChart,
   Newspaper,
+  Ticket,
 } from "lucide-react";
 import { ROUTES } from "@/constants";
 
@@ -58,6 +59,7 @@ export const SIDEBAR_MENU_ITEMS: MenuItem[] = [
   { icon: Megaphone, label: "Mass Notification", path: ROUTES.notifications },
   { icon: Newspaper, label: "Blogs", path: ROUTES.blogs },
   { icon: FileText, label: "Articles", path: ROUTES.articles },
+  { icon: Ticket, label: "Discount Coupons", path: ROUTES.coupons },
   {
     icon: Settings,
     label: "Platform Commission",

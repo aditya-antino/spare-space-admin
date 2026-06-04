@@ -4,6 +4,7 @@ import Blogs from "./Blogs";
 import BlogDetails from "./BlogDetails";
 import Articles from "./Articles";
 import ArticlesDetails from "./ArticlesDetails";
+import Coupons from "./Coupons";
 import Bookings from "./Bookings";
 import CancelRequests from "./CancelRequests";
 import Dashboard from "./Dashboard";
@@ -55,4 +56,5 @@ export {
   BlogDetails,
   Articles,
   ArticlesDetails,
+  Coupons,
 };

@@ -12,6 +12,8 @@ import {
   IndianRupee,
   WalletMinimal,
   Wallet,
+  Tag,
+  Flame,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { DashboardData } from "@/types";
@@ -46,6 +48,8 @@ const MOCK_DASHBOARD_DATA: DashboardData = {
     { title: "Total Revenue", value: "₹0", icon: "TrendingUp" },
     { title: "Total Commission", value: "₹0", icon: "IndianRupee" },
     { title: "Total Host Payout", value: "₹0", icon: "WalletMinimal" },
+    { title: "Total Discount Given", value: "₹0", icon: "Tag" },
+    { title: "Total Admin Burn", value: "₹0", icon: "Flame" },
   ],
 
   categoryData: [
@@ -332,6 +336,9 @@ function Dashboard() {
     TrendingUp,
     IndianRupee,
     Wallet,
+    WalletMinimal,
+    Tag,
+    Flame,
   };
 
   const kpis = data.kpis;
@@ -408,7 +415,7 @@ function Dashboard() {
           <h2 className="text-xl font-semibold text-tertiary-t1 mb-4">
             Key Metrics
           </h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {kpis.map((kpi, index) => (
               <ErrorBoundary key={index}>
                 <DashboardStatusCard
@@ -418,6 +425,11 @@ function Dashboard() {
                   loading={loading}
                   error={!!error}
                   onClick={() => handleKpiClick(kpi.title)}
+                  description={
+                    kpi.title === "Total Admin Burn"
+                      ? "If admin discount is more than 13%, it is a burn"
+                      : undefined
+                  }
                 />
               </ErrorBoundary>
             ))}

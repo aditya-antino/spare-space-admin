@@ -7,6 +7,7 @@ import {
   IndianRupee,
   Wallet,
   Receipt,
+  TrendingDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -46,6 +47,8 @@ interface PaymentSummary {
   totalTDSCollected: string;
   totalGSTCollected: string;
   pendingPayouts: string;
+  totalDiscountGiven?: string;
+  totalAdminBurn?: string;
 }
 
 interface CancellationRefundData {
@@ -193,6 +196,18 @@ const PaymentSummaryDashboard = ({
             icon={Receipt}
             loading
           />
+          <DashboardStatusCard
+            title="Total Discount Given"
+            value="-"
+            icon={IndianRupee}
+            loading
+          />
+          <DashboardStatusCard
+            title="Total Admin Burn"
+            value="-"
+            icon={TrendingDown}
+            loading
+          />
         </>
       );
 
@@ -227,6 +242,19 @@ const PaymentSummaryDashboard = ({
           value={formatCurrency(summary.totalGSTCollected)}
           icon={Receipt}
           loading={loading}
+        />
+        <DashboardStatusCard
+          title="Total Discount Given"
+          value={formatCurrency(summary.totalDiscountGiven || "0.00")}
+          icon={IndianRupee}
+          loading={loading}
+        />
+        <DashboardStatusCard
+          title="Total Admin Burn"
+          value={formatCurrency(summary.totalAdminBurn || "0.00")}
+          icon={TrendingDown}
+          loading={loading}
+          description="If admin discount is more than 13%, it is a burn"
         />
       </>
     );
@@ -287,7 +315,7 @@ const PaymentSummaryDashboard = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <KPIContent />
       </div>
 
