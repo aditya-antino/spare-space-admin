@@ -47,6 +47,8 @@ interface FinancialReportData {
     netAmountPayableToHost: number;
     paymentStatus: string;
     gstinUsedForTransaction: string;
+    discountAmount?: number | null;
+    adminBurn?: number | null;
 }
 
 const FinancialReport = () => {
@@ -206,6 +208,8 @@ const FinancialReport = () => {
                 "Net Amount Payable to Host",
                 "Payment Status",
                 "GSTIN Used for Transaction",
+                "discountAmount",
+                "adminBurn"
             ];
 
             // Convert data to CSV rows with comprehensive null checks
@@ -251,6 +255,8 @@ const FinancialReport = () => {
                         row.netAmountPayableToHost ?? 0,
                         `"${row.paymentStatus ?? "N/A"}"`,
                         `"${row.gstinUsedForTransaction ?? "N/A"}"`,
+                        row.discountAmount ?? "",
+                        row.adminBurn ?? "",
                     ].join(",")
                 ),
             ];
