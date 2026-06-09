@@ -59,15 +59,15 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // Guest calculations
   const guestBaseAmount = Number(baseAmount);
   const guestPlatformFee = Number(guestPlatformFeeAmount);
-  const guestSubtotal = guestBaseAmount + guestPlatformFee;
+  const discount = Number(discountAmount || 0);
+  const guestSubtotal = guestBaseAmount + guestPlatformFee - discount;
 
-  // Total GST for guest (includes base GST + platform fee GST)
-  const totalGuestCGST = Number(cgstAmount) + Number(guestPlatformFeeCgstAmount);
-  const totalGuestSGST = Number(sgstAmount) + Number(guestPlatformFeeSgstAmount);
+  // Total GST for guest (includes base GST + platform fee GST, calculated after coupon discount)
+  const totalGuestCGST = guestSubtotal * 0.09;
+  const totalGuestSGST = guestSubtotal * 0.09;
   const totalGuestGST = totalGuestCGST + totalGuestSGST;
 
-  const discount = Number(discountAmount || 0);
-  const guestTotalAmount = Math.max(0, guestSubtotal + totalGuestGST - discount);
+  const guestTotalAmount = Math.max(0, guestSubtotal + totalGuestGST);
 
   // Pre-compute GST items for guest display
   const guestGSTItems = useMemo(() => formatGSTForDisplay(
@@ -261,6 +261,17 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </p>
               </div>
 
+              {discount > 0 && (
+                <div className="flex justify-between text-green-600 font-medium">
+                  <p className="text-sm">
+                    Coupon discount {couponCode ? `(${couponCode})` : ""}
+                  </p>
+                  <p className="text-sm">
+                    -{formatCurrency(discount)}
+                  </p>
+                </div>
+              )}
+
               <div className="flex justify-between border-t border-gray-200 pt-2">
                 <p className="text-gray-900 text-sm font-semibold">
                   Subtotal
@@ -281,17 +292,6 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   </p>
                 </div>
               ))}
-
-              {discount > 0 && (
-                <div className="flex justify-between text-red-600 font-medium">
-                  <p className="text-sm">
-                   Admin Discount {couponCode ? `(${couponCode})` : ""}
-                  </p>
-                  <p className="text-sm">
-                    -{formatCurrency(discount)}
-                  </p>
-                </div>
-              )}
 
               <div className="flex justify-between border-t border-gray-200 pt-2">
                 <p className="text-gray-900 text-sm font-semibold">

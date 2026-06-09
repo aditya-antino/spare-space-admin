@@ -9,13 +9,13 @@ export const formatGSTForDisplay = (
     // Check for Delhi (ignoring case)
     if (normalizedState === 'delhi' || normalizedState === 'new delhi') {
         return [
-            { label: 'CGST', amount: cgst },
-            { label: 'SGST', amount: sgst },
+            { label: 'CGST (9%)', amount: cgst },
+            { label: 'SGST (9%)', amount: sgst },
         ];
     }
 
     // For all other states (or undefined), show IGST
     return [
-        { label: 'IGST', amount: cgst + sgst },
+        { label: 'IGST (18%)', amount: cgst + sgst },
     ];
 };
