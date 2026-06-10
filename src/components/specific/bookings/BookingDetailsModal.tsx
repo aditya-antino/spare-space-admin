@@ -87,6 +87,8 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const hostTDS = Number(tdsAmount);
   const hostPenalty = Number(penaltyAmount);
 
+  const isCancelled = status?.toLowerCase() === "cancelled";
+
   // Calculate final payout
   let finalPayout = hostSubtotal - hostPlatformFee - hostPlatformFeeGST - hostTDS;
 
@@ -101,8 +103,8 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     finalPayout = finalPayout - hostPenalty;
   }
 
-  // Step 5: If full refund (100%), host amount is 0
-  if (refundPercentage === 100) {
+  // Step 5: If full refund (100%) and cancelled, host amount is 0
+  if (isCancelled && refundPercentage === 100) {
     finalPayout = 0;
   }
 
