@@ -101,6 +101,11 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     finalPayout = finalPayout - hostPenalty;
   }
 
+  // Step 5: If full refund (100%), host amount is 0
+  if (refundPercentage === 100) {
+    finalPayout = 0;
+  }
+
   // Round to 2 decimal places to avoid floating-point precision issues
   finalPayout = Number(finalPayout.toFixed(2));
 
