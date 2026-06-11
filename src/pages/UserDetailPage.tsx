@@ -9,10 +9,6 @@ import {
   CreditCard,
   FileText,
   IdCard,
-  Car,
-  Globe,
-  Calendar,
-  Eye,
   Upload,
   ShieldCheck,
   X,
@@ -28,6 +24,7 @@ import {
   UserPersonalInfo,
   UserProfileHeader,
   UserRoleTabs,
+  GstDetailsSection,
 } from "@/components";
 import HostDashboard from "@/components/specific/userManagement/userDetails/HostDashboard";
 import { Input } from "@/components/ui/input";
@@ -36,13 +33,21 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { handleApiError } from "@/hooks";
-import { getUserDetails, updateUserCashfreeVerification } from "@/utils/services/userManagement.services";
+import {
+  getUserDetails,
+  updateUserCashfreeVerification,
+} from "@/utils/services/userManagement.services";
 import { uploadImage } from "@/utils/services/auth.services";
 
 const PageHeader = ({ onGoBack }: { onGoBack: () => void }) => (
@@ -218,7 +223,6 @@ const VerificationDialog = ({
   const [idType, setIdType] = useState<string>("aadhaar");
   const [idNumber, setIdNumber] = useState("");
 
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -229,7 +233,7 @@ const VerificationDialog = ({
     }
 
     setFile(selectedFile);
-    if (selectedFile.type.startsWith('image/')) {
+    if (selectedFile.type.startsWith("image/")) {
       setDocLink(URL.createObjectURL(selectedFile));
     } else {
       setDocLink(null);
@@ -281,8 +285,6 @@ const VerificationDialog = ({
       return;
     }
 
-
-
     try {
       setLoading(true);
 
@@ -305,7 +307,12 @@ const VerificationDialog = ({
     }
   };
 
-  const idTypeLabel = idType === "aadhaar" ? "Aadhar Card" : idType === "passport" ? "Passport" : "Driving License";
+  const idTypeLabel =
+    idType === "aadhaar"
+      ? "Aadhar Card"
+      : idType === "passport"
+        ? "Passport"
+        : "Driving License";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -329,7 +336,11 @@ const VerificationDialog = ({
           {file ? (
             docLink ? (
               <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                <img src={docLink} alt="preview" className="w-full h-full object-cover" />
+                <img
+                  src={docLink}
+                  alt="preview"
+                  className="w-full h-full object-cover"
+                />
                 <button
                   onClick={handleCancelFile}
                   className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors"
@@ -352,7 +363,10 @@ const VerificationDialog = ({
                     </span>
                   </div>
                 </div>
-                <button onClick={handleCancelFile} className="text-red-500 hover:text-red-600 transition-colors p-1">
+                <button
+                  onClick={handleCancelFile}
+                  className="text-red-500 hover:text-red-600 transition-colors p-1"
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -360,7 +374,7 @@ const VerificationDialog = ({
           ) : (
             <div
               className="relative border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-yellow-400 hover:bg-yellow-50/10 transition-all bg-gray-50/50"
-              onClick={() => document.getElementById('file-upload')?.click()}
+              onClick={() => document.getElementById("file-upload")?.click()}
             >
               <input
                 id="file-upload"
@@ -377,7 +391,9 @@ const VerificationDialog = ({
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-900">ID Type</Label>
+              <Label className="text-sm font-semibold text-gray-900">
+                ID Type
+              </Label>
               <Select value={idType} onValueChange={setIdType}>
                 <SelectTrigger className="w-full h-12 bg-white rounded-xl border-gray-200 focus:ring-yellow-400">
                   <SelectValue placeholder="Select ID Type" />
@@ -392,17 +408,25 @@ const VerificationDialog = ({
 
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-900">
-                {idType === "aadhaar" ? "Aadhar Number" : idType === "passport" ? "Passport File No." : "DL Number"}
+                {idType === "aadhaar"
+                  ? "Aadhar Number"
+                  : idType === "passport"
+                    ? "Passport File No."
+                    : "DL Number"}
               </Label>
               <Input
-                placeholder={idType === "aadhaar" ? "Enter Aadhar Number" : idType === "passport" ? "Enter Passport File No." : "Enter DL Number"}
+                placeholder={
+                  idType === "aadhaar"
+                    ? "Enter Aadhar Number"
+                    : idType === "passport"
+                      ? "Enter Passport File No."
+                      : "Enter DL Number"
+                }
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}
                 className="w-full h-12 bg-white rounded-xl border-gray-200 focus:ring-yellow-400 placeholder:text-gray-300"
               />
             </div>
-
-
           </div>
 
           <Button
@@ -410,7 +434,11 @@ const VerificationDialog = ({
             onClick={handleUpdate}
             disabled={loading || isUploading}
           >
-            {loading ? "Processing..." : isUploading ? "Uploading File..." : "Verify ID"}
+            {loading
+              ? "Processing..."
+              : isUploading
+                ? "Uploading File..."
+                : "Verify ID"}
           </Button>
         </div>
       </DialogContent>
@@ -445,13 +473,18 @@ const CashfreeVerificationSection = ({
             <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-2">
               <ShieldCheck className="h-6 w-6 text-green-500" />
             </div>
-            <p className="text-sm font-medium text-gray-900">Identity Verified</p>
-            <p className="text-xs text-gray-500 mt-1">User has successfully completed KYC verification</p>
+            <p className="text-sm font-medium text-gray-900">
+              Identity Verified
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              User has successfully completed KYC verification
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-gray-500">
-              Identity verification is required for this user to participate in all activities.
+              Identity verification is required for this user to participate in
+              all activities.
             </p>
             <Button
               className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold rounded-xl"
@@ -473,7 +506,8 @@ const UserDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeRoleTab, setActiveRoleTab] = useState<"guest" | "host">("guest");
-  const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
+  const [isVerificationDialogOpen, setIsVerificationDialogOpen] =
+    useState(false);
 
   const handleCashfreeUpdate = (userId: string, isVerified: boolean) => {
     if (userDetails) {
@@ -612,6 +646,7 @@ const UserDetailPage: React.FC = () => {
               onVerifyClick={() => setIsVerificationDialogOpen(true)}
             />
             <BankDetailsSection userDetails={userDetails} />
+            <GstDetailsSection userId={Number(userDetails.id)} />
           </div>
           <div className="lg:col-span-8 flex flex-col gap-3">
             <KYCDocumentsSection userDetails={userDetails} />

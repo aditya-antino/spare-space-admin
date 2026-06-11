@@ -132,6 +132,11 @@ const updateUserCashfreeVerification = async (userId: string | number, payload: 
   return response;
 };
 
+const getUserGstDetails = async (userId: string | number) => {
+  const response = await axiosInstance.get(`admin/users/${userId}/gst`);
+  return response;
+};
+
 export {
   getHostBookingData,
   getHostPropertyData,
@@ -148,5 +153,6 @@ export {
   getHostPayoutData,
   getUserDetails,
   updateUserAbout,
-  updateUserCashfreeVerification
+  updateUserCashfreeVerification,
+  getUserGstDetails
 };

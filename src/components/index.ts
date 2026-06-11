@@ -57,7 +57,9 @@ import HostBookingsTable from "./specific/userManagement/userDetails/HostBooking
 import HostPayoutsTable from "./specific/userManagement/userDetails/HostPayoutsTable";
 import CancellationInvoiceDialog from "./specific/dialogs/CancellationInvoiceDialog";
 import KYCDocumentsSection from "./specific/userManagement/userDetails/KYCDocumentsSection";
+import GstDetailsSection from "./specific/userManagement/userDetails/GstDetailsSection";
 export {
+  GstDetailsSection,
   KYCDocumentsSection,
   CancellationInvoiceDialog,
   HostPayoutsTable,
