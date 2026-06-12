@@ -469,16 +469,24 @@ const CashfreeVerificationSection = ({
         </div>
 
         {userDetails.isVerified ? (
-          <div className="flex flex-col items-center justify-center py-4 text-center">
-            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-2">
-              <ShieldCheck className="h-6 w-6 text-green-500" />
+          <div className="space-y-4">
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-2">
+                <ShieldCheck className="h-6 w-6 text-green-500" />
+              </div>
+              <p className="text-sm font-medium text-gray-900">
+                Identity Verified
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                User has successfully completed KYC verification
+              </p>
             </div>
-            <p className="text-sm font-medium text-gray-900">
-              Identity Verified
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              User has successfully completed KYC verification
-            </p>
+            <Button
+              className="w-full bg-transparent border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl"
+              onClick={onVerifyClick}
+            >
+              Verify Again
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
