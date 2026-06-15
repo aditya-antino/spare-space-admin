@@ -208,6 +208,12 @@ const PaymentSummaryDashboard = ({
             icon={TrendingDown}
             loading
           />
+          <DashboardStatusCard
+            title="Total Refund Given(through Razorpay)"
+            value="-"
+            icon={RefreshCw}
+            loading
+          />
         </>
       );
 
@@ -255,6 +261,12 @@ const PaymentSummaryDashboard = ({
           icon={TrendingDown}
           loading={loading}
           description="If admin discount is more than 13%, it is a burn"
+        />
+        <DashboardStatusCard
+          title="Total Refund Given(through Razorpay)"
+          value={formatCurrency(280.8)}
+          icon={RefreshCw}
+          loading={loading}
         />
       </>
     );
