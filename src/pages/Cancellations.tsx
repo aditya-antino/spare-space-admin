@@ -80,13 +80,13 @@ const Cancellations = () => {
   };
 
   const formatCurrency = (amount: string | number) => {
-    if (!amount) return "₹0";
+    if (!amount) return "₹0.00";
     const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(numAmount);
   };
 
@@ -110,8 +110,8 @@ const Cancellations = () => {
         <div className="font-medium">
           {cancellation?.User
             ? `${capitalizeWord(cancellation.User.firstName)} ${capitalizeWord(
-                cancellation.User.lastName
-              )}`
+              cancellation.User.lastName
+            )}`
             : "-"}
         </div>
       ),
@@ -192,9 +192,12 @@ const Cancellations = () => {
       header: "Refund Amount",
       cell: (cancellation) => {
         const cancellationData = cancellation?.Cancellations?.[0];
-        const amount = cancellationData?.refundAmount || "0";
+        const amount = cancellationData?.refundAmount;
 
-        return <div className="font-medium">{formatCurrency(amount)}</div>;
+        return <div className="font-medium">
+          {/* {formatCurrency(amount)} */}
+          {amount ? formatCurrency(amount) : "N/A"}
+        </div>;
       },
     },
     {

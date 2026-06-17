@@ -10,6 +10,7 @@ import { handleApiError } from "@/hooks";
 import { toast } from "sonner";
 import { downloadInvoice } from "@/utils/services/invoice.services";
 import { Info } from "lucide-react";
+import { formatGSTForDisplay } from "@/utils/gstHelpers";
 
 interface Financial {
   baseAmount: string;
@@ -26,6 +27,8 @@ interface Financial {
   refundPercentage: number;
   penaltyAmount: string;
   hostGst: boolean;
+  discountAmount?: string | number;
+  couponCode?: string;
 }
 
 interface CancellationInvoiceDialogProps {
@@ -45,6 +48,11 @@ interface CancellationInvoiceDialogProps {
     Space?: {
       id: number;
       title: string;
+      City?: {
+        id?: number;
+        city?: string;
+        state?: string;
+      };
     };
     User?: {
       id: number;
@@ -82,45 +90,74 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
 
   // Guest calculations
   const guestBaseAmount = Number(financial?.baseAmount) || 0;
-  const guestCgstAmount = Number(financial?.cgstAmount) || 0;
-  const guestSgstAmount = Number(financial?.sgstAmount) || 0;
   const guestPlatformFeeAmount = Number(financial?.guestPlatformFeeAmount) || 0;
-  const guestPlatformFeeCgstAmount =
-    Number(financial?.guestPlatformFeeCgstAmount) || 0;
-  const guestPlatformFeeSgstAmount =
-    Number(financial?.guestPlatformFeeSgstAmount) || 0;
 
   const multiplier = refundPercentage === 50 ? 2 : 1;
   const originalBaseAmount = guestBaseAmount * multiplier;
-  const originalCgstAmount = guestCgstAmount * multiplier;
-  const originalSgstAmount = guestSgstAmount * multiplier;
   const originalPlatformFeeAmount = guestPlatformFeeAmount * multiplier;
-  const originalPlatformFeeCgstAmount = guestPlatformFeeCgstAmount * multiplier;
-  const originalPlatformFeeSgstAmount = guestPlatformFeeSgstAmount * multiplier;
 
-  const originalTotalGSTOnGuestPlatformFee =
-    originalPlatformFeeAmount +
-    originalPlatformFeeCgstAmount +
-    originalPlatformFeeSgstAmount;
+  const discountAmount =
+    Math.abs(Number(data?.Financial?.discountAmount)) ||
+    0;
+  const couponCode =
+    data?.Financial?.couponCode ||
+    "";
 
-  const originalTotal =
-    originalBaseAmount +
-    originalCgstAmount +
-    originalSgstAmount +
-    originalTotalGSTOnGuestPlatformFee;
+  // Original subtotal calculated after platform fee and admin/coupon discount
+  const originalSubtotal = originalBaseAmount + originalPlatformFeeAmount - discountAmount;
 
-  const currentTotalGSTOnGuestPlatformFee =
-    guestPlatformFeeAmount +
-    guestPlatformFeeCgstAmount +
-    guestPlatformFeeSgstAmount;
+  // Original GST breakdown calculated over originalSubtotal
+  const totalOriginalGuestCGST = originalSubtotal * 0.09;
+  const totalOriginalGuestSGST = originalSubtotal * 0.09;
 
-  const currentTotal =
-    guestBaseAmount +
-    guestCgstAmount +
-    guestSgstAmount +
-    currentTotalGSTOnGuestPlatformFee;
+  const originalGSTItems = formatGSTForDisplay(
+    data?.Space?.City?.state,
+    totalOriginalGuestCGST,
+    totalOriginalGuestSGST
+  );
 
-  const refundAmount = originalTotal - currentTotal;
+  // Original total amount paid (includes GST calculated over post-coupon subtotal)
+  const originalTotal = originalSubtotal + totalOriginalGuestCGST + totalOriginalGuestSGST;
+
+  // Remaining/current booking amount after refund percentage is applied
+  const currentDiscountAmount = discountAmount * (1 - refundPercentage / 100);
+  const currentSubtotal = guestBaseAmount + guestPlatformFeeAmount - currentDiscountAmount;
+
+  // Current GST breakdown calculated over currentSubtotal
+  const totalCurrentGuestCGST = currentSubtotal * 0.09;
+  const totalCurrentGuestSGST = currentSubtotal * 0.09;
+
+  const currentGSTItems = formatGSTForDisplay(
+    data?.Space?.City?.state,
+    totalCurrentGuestCGST,
+    totalCurrentGuestSGST
+  );
+
+  // Current total remaining after refund percentage is applied
+  const currentTotal = currentSubtotal + totalCurrentGuestCGST + totalCurrentGuestSGST;
+
+  // Calculate refund amount:
+  const subtotalRefund = originalBaseAmount + (isCancelledByGuest ? 0 : originalPlatformFeeAmount) - (isCancelledByGuest ? 0 : discountAmount);
+
+  let refundAmount = 0;
+  if (refundPercentage === 100) {
+    if (isCancelledByGuest) {
+      refundAmount = subtotalRefund * 1.18;
+    } else {
+      refundAmount = originalTotal;
+    }
+  } else if (refundPercentage === 50) {
+    refundAmount = originalTotal - currentTotal;
+  }
+  refundAmount = Math.max(0, refundAmount);
+
+  const cgstRefund = subtotalRefund * 0.09;
+  const sgstRefund = subtotalRefund * 0.09;
+  const refundGSTItems = formatGSTForDisplay(
+    data?.Space?.City?.state,
+    cgstRefund,
+    sgstRefund
+  );
 
   // Host calculations
   const hostBaseAmount = Number(financial?.baseAmount) || 0;
@@ -132,19 +169,48 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
     Number(financial?.hostPlatformFeeCgstAmount) || 0;
   const hostPlatformFeeSgstAmount =
     Number(financial?.hostPlatformFeeSgstAmount) || 0;
-  // Host platform fee without GST
-  const totalHostPlatformFee = hostPlatformFeeAmount;
+
   const tdsAmount = Number(financial?.tdsAmount) || 0;
   const hostTCSAmount = Number(financial?.tcsAmount) || 0;
   const hostPenaltyAmount = Number(financial?.penaltyAmount) || 0;
 
-  let hostTotal = hostBaseAmount - totalHostPlatformFee - tdsAmount;
+  // Step 1: Calculate subtotal (Base + GST if host has GST)
+  let hostSubtotal = hostBaseAmount;
   if (hasHostGST) {
-    hostTotal = hostTotal + hostCgstAmount + hostSgstAmount - hostTCSAmount;
+    hostSubtotal = hostBaseAmount + hostCgstAmount + hostSgstAmount;
   }
-  if (hostPenaltyAmount > 0) {
+
+  // Step 2: Deduct platform fee, platform fee GST, and TDS
+  let hostTotal = hostSubtotal - hostPlatformFeeAmount - (hostPlatformFeeCgstAmount + hostPlatformFeeSgstAmount) - tdsAmount;
+
+  // Step 3: Deduct TCS only if host has GST
+  if (hasHostGST) {
+    hostTotal = hostTotal - hostTCSAmount;
+  }
+
+  // Step 4: Deduct penalty only if penaltyAmount > 0 AND refundPercentage !== 100
+  const shouldDeductPenalty = hostPenaltyAmount > 0 && refundPercentage !== 100;
+  if (shouldDeductPenalty) {
     hostTotal = hostTotal - hostPenaltyAmount;
   }
+
+  // Step 5: If full refund (100%), host amount is 0
+  if (refundPercentage === 100) {
+    hostTotal = 0;
+  }
+
+  const expectedPayout =
+    hostSubtotal -
+    hostPlatformFeeAmount -
+    (hostPlatformFeeCgstAmount + hostPlatformFeeSgstAmount) -
+    tdsAmount -
+    (hasHostGST ? hostTCSAmount : 0);
+
+  const hostGSTItems = formatGSTForDisplay(
+    data?.Space?.City?.state,
+    hostCgstAmount,
+    hostSgstAmount
+  );
 
   const handleDownloadInvoice = async (
     type: string,
@@ -191,57 +257,65 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
   const invoiceButtons = [
     ...(isGst
       ? [
-        {
-          label: "Cancellation GST Guest Booking",
-          type: "guest_booking_gst",
-          id: "3",
-          isCancellation: true,
-        },
-        {
-          label: "Original GST Guest Booking",
-          type: "guest_booking_gst",
-          id: "3",
-          isCancellation: false,
-        },
-        {
-          label: "Cancellation GST Guest Platform",
-          type: "guest_platform_gst",
-          id: "3",
-          isCancellation: true,
-        },
-        {
-          label: "Original GST Guest Platform",
-          type: "guest_platform_gst",
-          id: "3",
-          isCancellation: false,
-        },
-      ]
+          {
+            label: "Cancellation GST Guest Booking",
+            type: "guest_booking_gst",
+            id: "3",
+            isCancellation: true,
+          },
+          {
+            label: "Original GST Guest Booking",
+            type: "guest_booking_gst",
+            id: "3",
+            isCancellation: false,
+          },
+          ...(!isCancelledByGuest
+            ? [
+                {
+                  label: "Cancellation GST Guest Platform",
+                  type: "guest_platform_gst",
+                  id: "3",
+                  isCancellation: true,
+                },
+              ]
+            : []),
+          {
+            label: "Original GST Guest Platform",
+            type: "guest_platform_gst",
+            id: "3",
+            isCancellation: false,
+          },
+        ]
       : [
-        {
-          label: "Cancellation Guest Booking",
-          type: "guest_booking",
-          id: "3",
-          isCancellation: true,
-        },
-        {
-          label: "Original Guest Booking",
-          type: "guest_booking",
-          id: "3",
-          isCancellation: false,
-        },
-        {
-          label: "Cancellation Guest Platform",
-          type: "guest_platform",
-          id: "3",
-          isCancellation: true,
-        },
-        {
-          label: "Original Guest Platform",
-          type: "guest_platform",
-          id: "3",
-          isCancellation: false,
-        },
-      ]),
+          {
+            label: "Cancellation Guest Booking",
+            type: "guest_booking",
+            id: "3",
+            isCancellation: true,
+          },
+          {
+            label: "Original Guest Booking",
+            type: "guest_booking",
+            id: "3",
+            isCancellation: false,
+          },
+          ...(!isCancelledByGuest
+            ? [
+                {
+                  label: "Cancellation Guest Platform",
+                  type: "guest_platform",
+                  id: "3",
+                  isCancellation: true,
+                },
+              ]
+            : []),
+          {
+            label: "Original Guest Platform",
+            type: "guest_platform",
+            id: "3",
+            isCancellation: false,
+          },
+        ]),
     {
       label: "Host Cancellation Invoice",
       type: "host",
@@ -274,24 +348,44 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-sm font-medium text-gray-600">
-                Platform Fee (Tax incl.)
+                Platform Fee
               </span>
               <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(originalTotalGSTOnGuestPlatformFee)}
+                {formatCurrency(originalPlatformFeeAmount)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium text-gray-600">CGST</span>
-              <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(originalCgstAmount)}
+
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span className="text-sm font-medium text-gray-600">
+                  Admin Discount{couponCode ? ` (${couponCode})` : ""}
+                </span>
+                <span className="text-sm font-semibold text-red-600">
+                  -{formatCurrency(discountAmount)}
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-between border-t border-gray-200 pt-2">
+              <span className="text-sm font-semibold text-gray-900">
+                Subtotal
+              </span>
+              <span className="text-sm font-semibold text-gray-900">
+                {formatCurrency(originalSubtotal)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium text-gray-600">SGST</span>
-              <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(originalSgstAmount)}
-              </span>
-            </div>
+
+            {originalGSTItems.map((gstItem, index) => (
+              <div key={index} className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">
+                  {gstItem.label}
+                </span>
+                <span className="text-sm font-medium text-gray-600">
+                  {formatCurrency(gstItem.amount)}
+                </span>
+              </div>
+            ))}
+
             <div className="flex justify-between border-t border-gray-200 pt-2">
               <span className="text-sm font-semibold text-gray-900">
                 Total Amount Charged
@@ -300,6 +394,7 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
                 {formatCurrency(originalTotal)}
               </span>
             </div>
+
             <div className="flex justify-between border-t border-red-100 pt-2 bg-red-50 p-2 rounded">
               <span className="text-sm font-semibold text-red-600">
                 Refund Amount
@@ -329,27 +424,47 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-sm font-medium text-gray-600">
-                  Platform Fee (Tax incl.)
+                  Platform Fee
                 </span>
                 <span className="text-sm font-medium text-gray-600">
-                  {formatCurrency(originalTotalGSTOnGuestPlatformFee)}
+                  {formatCurrency(originalPlatformFeeAmount)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">CGST</span>
-                <span className="text-sm font-medium text-gray-600">
-                  {formatCurrency(originalCgstAmount)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">SGST</span>
-                <span className="text-sm font-medium text-gray-600">
-                  {formatCurrency(originalSgstAmount)}
-                </span>
-              </div>
+
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-gray-600">
+                  <span className="text-sm font-medium text-gray-600">
+                    Admin Discount{couponCode ? ` (${couponCode})` : ""}
+                  </span>
+                  <span className="text-sm font-semibold text-red-600">
+                    -{formatCurrency(discountAmount)}
+                  </span>
+                </div>
+              )}
+
               <div className="flex justify-between border-t border-gray-200 pt-2">
                 <span className="text-sm font-semibold text-gray-900">
-                  Total Original Amount
+                  Subtotal
+                </span>
+                <span className="text-sm font-semibold text-gray-900">
+                  {formatCurrency(originalSubtotal)}
+                </span>
+              </div>
+
+              {originalGSTItems.map((gstItem, index) => (
+                <div key={index} className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">
+                    {gstItem.label}
+                  </span>
+                  <span className="text-sm font-medium text-gray-600">
+                    {formatCurrency(gstItem.amount)}
+                  </span>
+                </div>
+              ))}
+
+              <div className="flex justify-between border-t border-gray-200 pt-2">
+                <span className="text-sm font-semibold text-gray-900">
+                  Total Amount Paid
                 </span>
                 <span className="text-sm font-semibold text-gray-900">
                   {formatCurrency(originalTotal)}
@@ -372,40 +487,50 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-sm font-medium text-gray-600">
-                  Platform Fee Refund (Tax incl.)
+                  Platform Fee Refund
                 </span>
                 <span className="text-sm font-medium text-gray-600">
-                  {isCancelledByGuest
-                    ? formatCurrency(0)
-                    : formatCurrency(originalTotalGSTOnGuestPlatformFee)}
+                  {formatCurrency(isCancelledByGuest ? 0 : originalPlatformFeeAmount)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">
-                  CGST Refund
+
+              {!isCancelledByGuest && discountAmount > 0 && (
+                <div className="flex justify-between text-gray-600 mt-1">
+                  <span className="text-sm font-medium text-gray-600">
+                    Admin Discount{couponCode ? ` (${couponCode})` : ""}
+                  </span>
+                  <span className="text-sm font-semibold text-red-600">
+                    -{formatCurrency(discountAmount)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between border-t border-gray-200 pt-2">
+                <span className="text-sm font-semibold text-gray-900">
+                  Subtotal Refund
                 </span>
-                <span className="text-sm font-medium text-gray-600">
-                  -{formatCurrency(originalCgstAmount)}
+                <span className="text-sm font-semibold text-gray-900">
+                  {formatCurrency(subtotalRefund)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">
-                  SGST Refund
-                </span>
-                <span className="text-sm font-medium text-gray-600">
-                  -{formatCurrency(originalSgstAmount)}
-                </span>
-              </div>
+
+              {refundGSTItems.map((gstItem, index) => (
+                <div key={index} className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">
+                    {gstItem.label} Refund
+                  </span>
+                  <span className="text-sm font-medium text-gray-600">
+                    {formatCurrency(gstItem.amount)}
+                  </span>
+                </div>
+              ))}
+
               <div className="flex justify-between border-t border-green-100 pt-2 bg-green-50 p-2 rounded">
                 <span className="text-sm font-semibold text-green-600">
                   Total Refund Amount
                 </span>
                 <span className="text-sm font-semibold text-green-600">
-                  {isCancelledByGuest
-                    ? formatCurrency(
-                      originalTotal - originalTotalGSTOnGuestPlatformFee
-                    )
-                    : formatCurrency(originalTotal)}
+                  {formatCurrency(refundAmount)}
                 </span>
               </div>
             </div>
@@ -432,27 +557,47 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-sm font-medium text-gray-600">
-                Platform Fee (Tax incl.)
+                Platform Fee
               </span>
               <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(originalTotalGSTOnGuestPlatformFee)}
+                {formatCurrency(originalPlatformFeeAmount)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium text-gray-600">CGST</span>
-              <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(originalCgstAmount)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium text-gray-600">SGST</span>
-              <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(originalSgstAmount)}
-              </span>
-            </div>
+
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span className="text-sm font-medium text-gray-600">
+                  Admin Discount{couponCode ? ` (${couponCode})` : ""}
+                </span>
+                <span className="text-sm font-semibold text-red-600">
+                  -{formatCurrency(discountAmount)}
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-between border-t border-gray-200 pt-2">
               <span className="text-sm font-semibold text-gray-900">
-                Total Original Amount
+                Subtotal
+              </span>
+              <span className="text-sm font-semibold text-gray-900">
+                {formatCurrency(originalSubtotal)}
+              </span>
+            </div>
+
+            {originalGSTItems.map((gstItem, index) => (
+              <div key={index} className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">
+                  {gstItem.label}
+                </span>
+                <span className="text-sm font-medium text-gray-600">
+                  {formatCurrency(gstItem.amount)}
+                </span>
+              </div>
+            ))}
+
+            <div className="flex justify-between border-t border-gray-200 pt-2">
+              <span className="text-sm font-semibold text-gray-900">
+                Total Amount Paid
               </span>
               <span className="text-sm font-semibold text-gray-900">
                 {formatCurrency(originalTotal)}
@@ -475,24 +620,43 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-sm font-medium text-gray-600">
-                Platform Fee (Tax incl.)
+                Platform Fee
               </span>
               <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(currentTotalGSTOnGuestPlatformFee)}
+                {formatCurrency(guestPlatformFeeAmount)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium text-gray-600">CGST</span>
-              <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(guestCgstAmount)}
+
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span className="text-sm font-medium text-gray-600">
+                  Admin Discount{couponCode ? ` (${couponCode})` : ""}
+                </span>
+                <span className="text-sm font-semibold text-red-600">
+                  -{formatCurrency(currentDiscountAmount)}
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-between border-t border-gray-200 pt-2">
+              <span className="text-sm font-semibold text-gray-900">
+                Subtotal
+              </span>
+              <span className="text-sm font-semibold text-gray-900">
+                {formatCurrency(currentSubtotal)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium text-gray-600">SGST</span>
-              <span className="text-sm font-medium text-gray-600">
-                {formatCurrency(guestSgstAmount)}
-              </span>
-            </div>
+
+            {currentGSTItems.map((gstItem, index) => (
+              <div key={index} className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">
+                  {gstItem.label}
+                </span>
+                <span className="text-sm font-medium text-gray-600">
+                  {formatCurrency(gstItem.amount)}
+                </span>
+              </div>
+            ))}
             <div className="flex justify-between border-t border-gray-200 pt-2">
               <span className="text-sm font-semibold text-gray-900">
                 Amount After Refund
@@ -532,70 +696,113 @@ const CancellationInvoiceDialog: React.FC<CancellationInvoiceDialogProps> = ({
               {formatCurrency(hostBaseAmount)}
             </span>
           </div>
+
+          {hasHostGST && (
+            <>
+              {hostGSTItems.map((gstItem, index) => (
+                <div key={index} className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">
+                    {gstItem.label}
+                  </span>
+                  <span className="text-sm font-medium text-gray-600">
+                    {formatCurrency(gstItem.amount)}
+                  </span>
+                </div>
+              ))}
+
+              <div className="flex justify-between border-t border-gray-200 pt-2">
+                <span className="text-sm font-semibold text-gray-700">
+                  Subtotal
+                </span>
+                <span className="text-sm font-semibold text-gray-700">
+                  {formatCurrency(hostSubtotal)}
+                </span>
+              </div>
+            </>
+          )}
+
           <div className="flex justify-between">
             <span className="text-sm font-medium text-gray-600">
               Platform Fee
             </span>
             <span className="text-sm font-medium text-gray-600">
-              -{formatCurrency(totalHostPlatformFee)}
+              -{formatCurrency(hostPlatformFeeAmount)}
             </span>
           </div>
-          {hasHostGST && (
-            <>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">CGST</span>
-                <span className="text-sm font-medium text-gray-600">
-                  {formatCurrency(hostCgstAmount)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">SGST</span>
-                <span className="text-sm font-medium text-gray-600">
-                  {formatCurrency(hostSgstAmount)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">TCS</span>
-                <span className="text-sm font-medium text-gray-600">
-                  -{formatCurrency(hostTCSAmount)}
-                </span>
-              </div>
-            </>
-          )}
+
+          <div className="flex justify-between">
+            <span className="text-sm font-medium text-gray-600">
+              GST on Platform Fee
+            </span>
+            <span className="text-sm font-medium text-gray-600">
+              -{formatCurrency(hostPlatformFeeCgstAmount + hostPlatformFeeSgstAmount)}
+            </span>
+          </div>
+
           <div className="flex justify-between">
             <span className="text-sm font-medium text-gray-600">TDS</span>
             <span className="text-sm font-medium text-gray-600">
               -{formatCurrency(tdsAmount)}
             </span>
           </div>
-          {hostPenaltyAmount > 0 && (
+
+          {hasHostGST && (
+            <div className="flex justify-between">
+              <span className="text-sm font-medium text-gray-600">TCS</span>
+              <span className="text-sm font-medium text-gray-600">
+                -{formatCurrency(hostTCSAmount)}
+              </span>
+            </div>
+          )}
+
+          {shouldDeductPenalty && (
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-600">
                   Penalty
                 </span>
-                {refundPercentage === 100 && (
-                  <div className="relative group">
-                    <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help" />
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-48 z-10">
-                      This penalty will be adjusted against your future
-                      bookings.
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white border-r border-b border-gray-200 rotate-45"></div>
-                    </div>
-                  </div>
-                )}
               </div>
               <span className="text-sm font-medium text-red-600">
                 -{formatCurrency(hostPenaltyAmount)}
               </span>
             </div>
           )}
+
+          {hostPenaltyAmount > 0 && refundPercentage === 100 && (
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-600">
+                  Penalty (Adjusted Later)
+                </span>
+                <div className="relative group">
+                  <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-48 z-10">
+                    This penalty will be adjusted against your future bookings.
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white border-r border-b border-gray-200 rotate-45"></div>
+                  </div>
+                </div>
+              </div>
+              <span className="text-sm font-medium text-red-600">
+                -{formatCurrency(hostPenaltyAmount)}
+              </span>
+            </div>
+          )}
+
+          <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
+            <span className="text-sm font-semibold text-gray-900">
+              Expected Payout
+            </span>
+            <span className="text-sm font-semibold text-gray-900">
+              {formatCurrency(expectedPayout)}
+            </span>
+          </div>
+
           <div className="flex justify-between border-t border-gray-300 pt-2 mt-2">
             <span className="text-sm font-semibold text-gray-900">
               Final Payout to Host
             </span>
             <span className="text-sm font-semibold text-gray-900">
-              {formatCurrency(refundPercentage === 100 ? 0 : hostTotal)}
+              {formatCurrency(hostTotal)}
             </span>
           </div>
         </div>
