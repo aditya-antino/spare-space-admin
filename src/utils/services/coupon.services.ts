@@ -25,20 +25,43 @@ export interface Coupon {
   unlockReasons?: UnlockReason[];
 }
 
+export interface CustomCode {
+  id: string | number;
+  code: string;
+  discountPercentage: number | string;
+  totalCountOfUsed: number;
+  userIds: (string | number)[];
+  bookingIds: (string | number)[];
+  isActive: boolean;
+  created_at?: string;
+  updated_at?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  usages?: any[];
+}
+
 export const getCoupons = async (page: number = 1, limit: number = 10, search?: string) => {
   const query = `admin/coupons?page=${page}&limit=${limit}${search ? `&search=${search}` : ""}`;
   const response = await axiosInstance.get(query);
   return response;
 };
 
-export const createCoupon = async (payload: { discountPercentage: number }) => {
+export const createCoupon = async (payload: {
+  discountPercentage: number;
+  isUnlimited?: boolean;
+  code?: string;
+}) => {
   const response = await axiosInstance.post("admin/coupons", payload);
   return response;
 };
 
 export const updateCoupon = async (
   id: string | number,
-  payload: { discountPercentage?: number; isActive?: boolean }
+  payload: {
+    discountPercentage?: number;
+    isActive?: boolean;
+    code?: string;
+  }
 ) => {
   const response = await axiosInstance.patch(`admin/coupons/${id}`, payload);
   return response;
