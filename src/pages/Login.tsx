@@ -73,8 +73,15 @@ const Login = () => {
           lastName,
           email,
           avatar,
+          roles,
         } = response.data.data;
-        const user = { firstName, lastName, email, avatar };
+        const user = {
+          firstName,
+          lastName,
+          email,
+          avatar,
+          roles: roles || [],
+        };
         dispatch(setUser({ user, accessToken, refreshToken }));
         toast.success("Login successful", {
           description: fallbackMessages.loginSuccess,

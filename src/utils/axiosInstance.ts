@@ -183,6 +183,10 @@ axiosInstance.interceptors.response.use(
       (error?.response?.data as any)?.error ||
       "";
 
+    if (error?.response?.status === 403) {
+      toast.error(message || "You do not have permission to perform this action.");
+    }
+
     // Refresh Token expired → logout
     if (message === REFRESH_TOKEN_EXPIRED_MESSAGE) {
       handleSessionExpired();

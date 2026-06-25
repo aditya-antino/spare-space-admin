@@ -1,3 +1,5 @@
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 import { useLocation } from "react-router-dom";
 import {
   SidebarMenuItemCollapsed,
@@ -17,11 +19,25 @@ const SidebarNavigation = ({
   onSubMenuClick,
 }: SidebarNavigationProps) => {
   const location = useLocation();
+  const roles = useSelector((state: RootState) => state.user.user?.roles || []);
+  const isMarketing = roles.includes("marketing");
+  const isAdmin = roles.includes("admin");
+
+  const filteredMenuItems = SIDEBAR_MENU_ITEMS.filter((item) => {
+    if (isMarketing && !isAdmin) {
+      return (
+        item.label === "Blogs" ||
+        item.label === "Articles" ||
+        item.label === "Pages"
+      );
+    }
+    return true;
+  });
 
   return (
     <nav className="flex-1 py-4 overflow-y-auto my-2 hide-scrollbar">
       <ul className="space-y-1 px-2">
-        {SIDEBAR_MENU_ITEMS.map((item) => {
+        {filteredMenuItems.map((item) => {
           const isActive =
             location.pathname.includes(item.path) ||
             item.children?.some((child) =>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, LogOut, User, ChevronDown, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LogOut, User, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +29,14 @@ const Header = ({ title }: HeaderProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [notificationCount, setNotificationCount] = useState(0);
 
+  const roles = userDetails?.roles || [];
+  const isMarketing = roles.includes("marketing");
+  const isAdmin = roles.includes("admin");
+
   const fetchNotificationCount = async () => {
+    if (isMarketing && !isAdmin) {
+      return;
+    }
     try {
       const response = await getPlatformNotificationCount();
       if (response.status === 200) {
@@ -41,6 +47,9 @@ const Header = ({ title }: HeaderProps) => {
     }
   };
   useEffect(() => {
+    if (isMarketing && !isAdmin) {
+      return;
+    }
     fetchNotificationCount();
 
     const interval = setInterval(() => {
@@ -48,7 +57,7 @@ const Header = ({ title }: HeaderProps) => {
     }, 2 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isMarketing, isAdmin]);
 
   const handleLogout = () => {
     dispatch(clearUser());
@@ -64,10 +73,12 @@ const Header = ({ title }: HeaderProps) => {
       <h1 className="text-xl font-semibold text-foreground">{title}</h1>
 
       <div className="flex items-center gap-4">
-        <NotificationDropdown
-          count={notificationCount}
-          setCount={setNotificationCount}
-        />
+        {(!isMarketing || isAdmin) && (
+          <NotificationDropdown
+            count={notificationCount}
+            setCount={setNotificationCount}
+          />
+        )}
 
         {/* User Menu */}
         <DropdownMenu>
