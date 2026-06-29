@@ -27,6 +27,7 @@ import UserDetailPage from "./UserDetailPage";
 import Cancellations from "./Cancellations";
 import Payout from "./Payout";
 import FinancialReport from "./FinancialReport";
+import RazorpaySummary from "./RazorpaySummary";
 export {
   Payout,
   Cancellations,
@@ -57,4 +58,5 @@ export {
   Articles,
   ArticlesDetails,
   Coupons,
+  RazorpaySummary,
 };

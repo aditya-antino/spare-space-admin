@@ -7,7 +7,6 @@ import {
   Bookings,
   CancellationPolicy,
   Cancellations,
-  CancelRequests,
   Dashboard,
   ErrorPage,
   GovernmentID,
@@ -30,6 +29,7 @@ import {
   Articles,
   ArticlesDetails,
   Coupons,
+  RazorpaySummary,
 } from "@/pages";
 
 const NavigationContainer = () => {
@@ -79,6 +79,7 @@ const NavigationContainer = () => {
           <Route path={ROUTES.articles} element={<Articles />} />
           <Route path={ROUTES.articleDetails} element={<ArticlesDetails />} />
           <Route path={ROUTES.coupons} element={<Coupons />} />
+          <Route path={ROUTES.razorpaySummary} element={<RazorpaySummary />} />
         </Route>
 
         <Route path={ROUTES.notFound} element={<ErrorPage />} />

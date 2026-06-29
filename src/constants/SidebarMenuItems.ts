@@ -15,6 +15,7 @@ import {
   FileBarChart,
   Newspaper,
   Ticket,
+  CreditCard,
 } from "lucide-react";
 import { ROUTES } from "@/constants";
 
@@ -60,6 +61,7 @@ export const SIDEBAR_MENU_ITEMS: MenuItem[] = [
   { icon: Newspaper, label: "Blogs", path: ROUTES.blogs },
   { icon: FileText, label: "Articles", path: ROUTES.articles },
   { icon: Ticket, label: "Discount Coupons", path: ROUTES.coupons },
+  { icon: CreditCard, label: "Razorpay Summary", path: ROUTES.razorpaySummary },
   {
     icon: Settings,
     label: "Platform Commission",
