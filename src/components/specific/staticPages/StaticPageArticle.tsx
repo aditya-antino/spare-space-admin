@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import JoditEditor from 'jodit-react';
+import { uploadImage } from '@/utils/services/auth.services';
+import { toast } from 'sonner';
 
 interface StaticPageArticleProps {
     content: string;
@@ -12,6 +14,61 @@ const StaticPageArticle: React.FC<StaticPageArticleProps> = ({
     onBlur,
     editorRef,
 }) => {
+    const config = useMemo(() => ({
+        readonly: false,
+        placeholder: "Enter here...",
+        height: 441,
+        width: "100%",
+        toolbarSticky: false,
+        style: {
+            color: "#333333",
+            fontSize: "14px",
+            fontFamily: "Roboto, sans-serif",
+        },
+        controls: {
+            image: {
+                exec: async (editor: any) => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = async () => {
+                        const file = input.files?.[0];
+                        if (!file) return;
+
+                        if (file.size > 5 * 1024 * 1024) {
+                            toast.error("File size must be less than 5MB");
+                            return;
+                        }
+
+                        const toastId = toast.loading("Uploading image...");
+                        try {
+                            const uploadFormData = new FormData();
+                            uploadFormData.append("files", file);
+
+                            const uploadRes = await uploadImage(uploadFormData);
+                            const data = uploadRes.data?.data?.[0];
+
+                            if (!data?.url) {
+                                toast.error("Failed to upload image", { id: toastId });
+                                return;
+                            }
+
+                            // Insert the image into the editor at the cursor
+                            editor.selection.insertHTML(
+                                `<img src="${data.url}" alt="image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0;" />`
+                            );
+                            toast.success("Image uploaded and inserted successfully", { id: toastId });
+                        } catch (error) {
+                            console.error("Failed to upload image:", error);
+                            toast.error("Failed to upload image", { id: toastId });
+                        }
+                    };
+                    input.click();
+                }
+            }
+        }
+    }), []);
+
     return (
         <div
             className="jodit-container-custom"
@@ -36,18 +93,7 @@ const StaticPageArticle: React.FC<StaticPageArticleProps> = ({
                 ref={editorRef}
                 value={content}
                 onBlur={onBlur}
-                config={{
-                    readonly: false,
-                    placeholder: "Enter here...",
-                    height: 441,
-                    width: "100%",
-                    toolbarSticky: false,
-                    style: {
-                        color: "#333333",
-                        fontSize: "14px",
-                        fontFamily: "Roboto, sans-serif",
-                    },
-                }}
+                config={config}
             />
         </div>
     );
