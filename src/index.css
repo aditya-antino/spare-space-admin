@@ -525,3 +525,89 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Match RTE preview styles with frontend blog design */
+.jodit-wysiwyg, .jodit_wysiwyg {
+    h1 {
+        font-size: 2.25rem !important; /* text-4xl */
+        font-weight: inherit !important;
+        color: #2D2D2D;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+        display: block;
+    }
+    h2 {
+        font-size: 1.875rem !important; /* text-3xl */
+        font-weight: inherit !important;
+        color: #2D2D2D;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        line-height: 1.25;
+        display: block;
+    }
+    h3 {
+        font-size: 1.5rem !important; /* text-2xl */
+        font-weight: inherit !important;
+        color: #2D2D2D;
+        margin-top: 1.25rem;
+        margin-bottom: 0.75rem;
+        line-height: 1.3;
+        display: block;
+    }
+    h4 {
+        font-size: 1.25rem !important; /* text-xl */
+        font-weight: inherit !important;
+        color: #2D2D2D;
+        margin-top: 1.25rem;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    /* Bold headings only when containing/wrapped in strong */
+    h1 strong, h2 strong, h3 strong, h4 strong,
+    strong h1, strong h2, strong h3, strong h4 {
+        font-weight: 900 !important;
+    }
+    p {
+        font-size: 1.125rem; /* text-lg */
+        line-height: 1.75;
+        color: #2D2D2D;
+        margin-bottom: 1.25rem;
+    }
+    a {
+        color: #D89D03;
+        text-decoration: underline;
+        font-weight: 500;
+    }
+    ul {
+        list-style-type: disc !important;
+        padding-left: 1.5rem !important;
+        margin-bottom: 1.25rem;
+    }
+    ol {
+        list-style-type: decimal !important;
+        padding-left: 1.5rem !important;
+        margin-bottom: 1.25rem;
+    }
+    blockquote {
+        border-left: 4px solid #F7CD29;
+        padding-left: 1.25rem;
+        font-style: italic;
+        color: #4B5563;
+        margin: 1.5rem 0;
+    }
+    strong {
+        font-weight: 900 !important;
+    }
+    table {
+        width: 100%;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-collapse: collapse;
+        border: 1px solid black;
+    }
+    td, th {
+        border: 1px solid black;
+        padding: 8px;
+    }
+}
