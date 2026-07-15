@@ -31,5 +31,6 @@ export const ROUTES = {
   buildArticleDetails: (slug: string) => `/dashboard/articles/${slug}`,
   coupons: "/dashboard/coupons",
   razorpaySummary: "/dashboard/razorpay-summary",
+  adminTags: "/dashboard/admin-tags",
   notFound: "*",
 };

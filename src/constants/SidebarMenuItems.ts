@@ -16,6 +16,7 @@ import {
   Newspaper,
   Ticket,
   CreditCard,
+  Tag,
 } from "lucide-react";
 import { ROUTES } from "@/constants";
 
@@ -32,6 +33,7 @@ export const SIDEBAR_MENU_ITEMS: MenuItem[] = [
   { icon: Building2, label: "Property", path: ROUTES.properties },
   { icon: Calendar, label: "Bookings", path: ROUTES.bookings },
   { icon: ShieldCheck, label: "Approval", path: ROUTES.approvals },
+  { icon: Tag, label: "Admin Tags", path: ROUTES.adminTags },
   {
     icon: Star,
     label: "Reviews",

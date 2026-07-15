@@ -30,6 +30,7 @@ import {
   ArticlesDetails,
   Coupons,
   RazorpaySummary,
+  AdminTags,
 } from "@/pages";
 
 const NavigationContainer = () => {
@@ -80,6 +81,7 @@ const NavigationContainer = () => {
           <Route path={ROUTES.articleDetails} element={<ArticlesDetails />} />
           <Route path={ROUTES.coupons} element={<Coupons />} />
           <Route path={ROUTES.razorpaySummary} element={<RazorpaySummary />} />
+          <Route path={ROUTES.adminTags} element={<AdminTags />} />
         </Route>
 
         <Route path={ROUTES.notFound} element={<ErrorPage />} />

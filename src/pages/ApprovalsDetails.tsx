@@ -21,6 +21,7 @@ import {
   Loader2,
   Eye,
   Star,
+  Tag,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { fallbackMessages } from "@/constants/fallbackMessages";
@@ -176,6 +177,12 @@ interface Property {
   spaceType?: string[];
 }
 
+interface AdminTag {
+  id: number;
+  name: string;
+  status?: string;
+}
+
 const PropertyDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -188,9 +195,22 @@ const PropertyDetailsPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
+  const [allTags, setAllTags] = useState<AdminTag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [tempTags, setTempTags] = useState<number[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+
+  const handleToggleTag = (tagId: number) => {
+    setTempTags((prev) =>
+      prev.includes(tagId) ? prev.filter((i) => i !== tagId) : [...prev, tagId]
+    );
+  };
+
+
   const getPropertyDetail = async () => {
     try {
       setLoading(true);
+      setTagsLoading(true);
       if (!id) {
         return toast.error(fallbackMessages.genericError);
       }
@@ -208,16 +228,39 @@ const PropertyDetailsPage = () => {
 
         setProperty(data);
         setFormData({ ...data });
+
+        // Parse assigned tags from property details response
+        if (data.tags && Array.isArray(data.tags)) {
+          const ids = data.tags.map((t: any) => {
+            if (typeof t === "object" && t !== null) {
+              return t.tagId || t.AdminSpaceTag?.id || t.id;
+            }
+            return t;
+          });
+          setSelectedTags(ids);
+        } else {
+          setSelectedTags([]);
+        }
+
+        // Parse allActiveTags from property details response
+        if (data.allActiveTags && Array.isArray(data.allActiveTags)) {
+          setAllTags(data.allActiveTags);
+        } else {
+          setAllTags([]);
+        }
       }
     } catch (error) {
       handleApiError(error);
     } finally {
       setLoading(false);
+      setTagsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (id) getPropertyDetail();
+    if (id) {
+      getPropertyDetail();
+    }
   }, [id]);
 
   const handleApprove = async () => {
@@ -265,12 +308,14 @@ const PropertyDetailsPage = () => {
         customRules: formData.listing?.customRules || [],
         arrivalInstructions: formData.listing?.arrivalInstructions,
         comments,
+        tagIds: tempTags,
       };
 
       const response = await updatePropertyDetails(id, payload);
 
       if (response.status === 200) {
         toast.success(fallbackMessages.propertyUpdateSuccess);
+        setSelectedTags([...tempTags]);
         setProperty(formData);
         setIsEditing(false);
         setConfirmDialogOpen(false);
@@ -356,6 +401,7 @@ const PropertyDetailsPage = () => {
   const handleCancelEdit = () => {
     setIsEditing(false);
     setFormData(property ? { ...property } : null);
+    setTempTags([...selectedTags]);
     setComments("");
   };
 
@@ -449,7 +495,10 @@ const PropertyDetailsPage = () => {
                   </>
                 ) : (
                   <button
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => {
+                      setIsEditing(true);
+                      setTempTags([...selectedTags]);
+                    }}
                     className="flex items-center space-x-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors"
                   >
                     <Edit3 className="w-4 h-4" />
@@ -522,11 +571,10 @@ const PropertyDetailsPage = () => {
                       <div key={img.id} className="relative flex-shrink-0">
                         <button
                           onClick={() => setSelectedImage(index)}
-                          className={`w-20 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                            selectedImage === index
-                              ? "border-blue-500"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-20 h-16 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === index
+                            ? "border-blue-500"
+                            : "border-gray-200"
+                            }`}
                         >
                           <img
                             src={img.imageUrl}
@@ -848,13 +896,12 @@ const PropertyDetailsPage = () => {
                         >
                           <div className="flex items-center">
                             <div
-                              className={`w-2 h-2 rounded-full mr-3 ${
-                                rule.rule_type === "allow"
-                                  ? "bg-green-500"
-                                  : rule.rule_type === "do-not-allow"
-                                    ? "bg-red-500"
-                                    : "bg-blue-500"
-                              }`}
+                              className={`w-2 h-2 rounded-full mr-3 ${rule.rule_type === "allow"
+                                ? "bg-green-500"
+                                : rule.rule_type === "do-not-allow"
+                                  ? "bg-red-500"
+                                  : "bg-blue-500"
+                                }`}
                             ></div>
                             <span className="text-gray-700">
                               {rule.rule_name}:{" "}
@@ -1019,28 +1066,25 @@ const PropertyDetailsPage = () => {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div
-                    className={`p-4 rounded-xl border-2 ${
-                      formData.listing.parkingOptions.free_onsite
-                        ? "bg-green-50 border-green-200"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
+                    className={`p-4 rounded-xl border-2 ${formData.listing.parkingOptions.free_onsite
+                      ? "bg-green-50 border-green-200"
+                      : "bg-gray-50 border-gray-200"
+                      }`}
                   >
                     <div className="flex items-center">
                       <Car
-                        className={`w-5 h-5 mr-3 ${
-                          formData.listing.parkingOptions.free_onsite
-                            ? "text-green-600"
-                            : "text-gray-400"
-                        }`}
+                        className={`w-5 h-5 mr-3 ${formData.listing.parkingOptions.free_onsite
+                          ? "text-green-600"
+                          : "text-gray-400"
+                          }`}
                       />
                       <div>
                         <p className="font-medium text-gray-900">Free Onsite</p>
                         <p
-                          className={`text-sm ${
-                            formData.listing.parkingOptions.free_onsite
-                              ? "text-green-600"
-                              : "text-gray-500"
-                          }`}
+                          className={`text-sm ${formData.listing.parkingOptions.free_onsite
+                            ? "text-green-600"
+                            : "text-gray-500"
+                            }`}
                         >
                           {formData.listing.parkingOptions.free_onsite
                             ? "Available"
@@ -1050,28 +1094,25 @@ const PropertyDetailsPage = () => {
                     </div>
                   </div>
                   <div
-                    className={`p-4 rounded-xl border-2 ${
-                      formData.listing.parkingOptions.paid_onsite
-                        ? "bg-blue-50 border-blue-200"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
+                    className={`p-4 rounded-xl border-2 ${formData.listing.parkingOptions.paid_onsite
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-gray-50 border-gray-200"
+                      }`}
                   >
                     <div className="flex items-center">
                       <DollarSign
-                        className={`w-5 h-5 mr-3 ${
-                          formData.listing.parkingOptions.paid_onsite
-                            ? "text-blue-600"
-                            : "text-gray-400"
-                        }`}
+                        className={`w-5 h-5 mr-3 ${formData.listing.parkingOptions.paid_onsite
+                          ? "text-blue-600"
+                          : "text-gray-400"
+                          }`}
                       />
                       <div>
                         <p className="font-medium text-gray-900">Paid Onsite</p>
                         <p
-                          className={`text-sm ${
-                            formData.listing.parkingOptions.paid_onsite
-                              ? "text-blue-600"
-                              : "text-gray-500"
-                          }`}
+                          className={`text-sm ${formData.listing.parkingOptions.paid_onsite
+                            ? "text-blue-600"
+                            : "text-gray-500"
+                            }`}
                         >
                           {formData.listing.parkingOptions.paid_onsite
                             ? "Available"
@@ -1081,28 +1122,25 @@ const PropertyDetailsPage = () => {
                     </div>
                   </div>
                   <div
-                    className={`p-4 rounded-xl border-2 ${
-                      formData.listing.parkingOptions.nearby_parking_lot
-                        ? "bg-purple-50 border-purple-200"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
+                    className={`p-4 rounded-xl border-2 ${formData.listing.parkingOptions.nearby_parking_lot
+                      ? "bg-purple-50 border-purple-200"
+                      : "bg-gray-50 border-gray-200"
+                      }`}
                   >
                     <div className="flex items-center">
                       <MapPin
-                        className={`w-5 h-5 mr-3 ${
-                          formData.listing.parkingOptions.nearby_parking_lot
-                            ? "text-purple-600"
-                            : "text-gray-400"
-                        }`}
+                        className={`w-5 h-5 mr-3 ${formData.listing.parkingOptions.nearby_parking_lot
+                          ? "text-purple-600"
+                          : "text-gray-400"
+                          }`}
                       />
                       <div>
                         <p className="font-medium text-gray-900">Nearby Lot</p>
                         <p
-                          className={`text-sm ${
-                            formData.listing.parkingOptions.nearby_parking_lot
-                              ? "text-purple-600"
-                              : "text-gray-500"
-                          }`}
+                          className={`text-sm ${formData.listing.parkingOptions.nearby_parking_lot
+                            ? "text-purple-600"
+                            : "text-gray-500"
+                            }`}
                         >
                           {formData.listing.parkingOptions.nearby_parking_lot
                             ? "Available"
@@ -1377,7 +1415,7 @@ const PropertyDetailsPage = () => {
                   <p className="text-gray-600">Advance Booking</p>
                   <p className="font-medium text-gray-900">
                     {property.listing.advanceBookingDays === 0 ||
-                    !property.listing.advanceBookingDays
+                      !property.listing.advanceBookingDays
                       ? 2
                       : property.listing.advanceBookingDays}{" "}
                     days
@@ -1388,11 +1426,11 @@ const PropertyDetailsPage = () => {
                   <p className="font-medium text-gray-900 text-center">
                     {property.listing.availableWindowDate
                       ? new Date(
-                          property.listing.availableWindowDate,
-                        ).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                        property.listing.availableWindowDate,
+                      ).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                       : "6 months"}
                   </p>
                 </div>
@@ -1437,6 +1475,76 @@ const PropertyDetailsPage = () => {
                     </div>
                   )}
                 </div>
+              </div>
+              {/* Admin Tags Card */}
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 flex items-center">
+                    <Shield className="w-5 h-5 mr-2 text-indigo-600" />
+                    Admin Tags
+                  </h3>
+                </div>
+
+                {tagsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-gray-500">
+                    <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mb-2" />
+                    <span className="text-xs">Loading tags...</span>
+                  </div>
+                ) : !isEditing ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.length > 0 ? (
+                      selectedTags.map((tagId) => {
+                        const tag = allTags.find((t) => t.id === tagId);
+                        if (!tag) return null;
+                        return (
+                          <span
+                            key={tag.id}
+                            className="px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200 shadow-sm bg-gray-100 text-gray-800 border-gray-200"
+                          >
+                            {tag.name}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-gray-500 italic py-2">
+                        No admin tags assigned to this space yet.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-xs text-gray-500 font-medium">Select tags to assign to this space:</p>
+                    <div className="max-h-60 overflow-y-auto pr-1 space-y-2">
+                      {allTags.filter((tag) => tag.status !== "in-active").map((tag) => {
+                        const isChecked = tempTags.includes(tag.id);
+                        return (
+                          <div
+                            key={tag.id}
+                            onClick={() => handleToggleTag(tag.id)}
+                            className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isChecked
+                              ? "bg-indigo-50/40 border-indigo-200 text-indigo-900 shadow-sm"
+                              : "hover:bg-gray-50 border-gray-100 text-gray-700 hover:border-gray-200"
+                              }`}
+                          >
+                            <span className="flex items-center gap-2 flex-1">
+                              <span className="text-sm font-semibold select-none">
+                                {tag.name}
+                              </span>
+                            </span>
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => { }} // Controlled by onClick
+                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

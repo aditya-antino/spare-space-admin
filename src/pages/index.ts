@@ -1,5 +1,6 @@
 import Approvals from "./Approvals";
 import ApprovalsDetails from "./ApprovalsDetails";
+import AdminTags from "./AdminTags";
 import Blogs from "./Blogs";
 import BlogDetails from "./BlogDetails";
 import Articles from "./Articles";
@@ -59,4 +60,5 @@ export {
   ArticlesDetails,
   Coupons,
   RazorpaySummary,
+  AdminTags,
 };
