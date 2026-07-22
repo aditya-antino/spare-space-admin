@@ -10,7 +10,7 @@ import {
   Shield,
   Edit2,
   Trash2,
-  AlertTriangle,
+  Filter,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { ROUTES } from "@/constants";
 import {
@@ -33,6 +40,7 @@ import {
   updateAdminTag,
   toggleAdminTagStatus,
   deleteAdminTag,
+  getSpaceTagCategories,
 } from "@/utils/services/approvals.services";
 
 interface LinkedSpace {
@@ -41,9 +49,16 @@ interface LinkedSpace {
   city: string;
 }
 
+interface Category {
+  id: number;
+  name: string;
+}
+
 interface TagWithSpaces {
   id: number;
   name: string;
+  categoryId?: number;
+  category?: Category | null;
   status: string;
   spaceCount: number;
   spaces: LinkedSpace[];
@@ -54,18 +69,24 @@ const AdminTags = () => {
   const [tags, setTags] = useState<TagWithSpaces[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const limit = 10; // table items per page
+  const limit = 100; // table items per page
+
+  // Categories
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Modals state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
-  
+  const [newTagCategoryId, setNewTagCategoryId] = useState("");
+
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<TagWithSpaces | null>(null);
   const [editTagName, setEditTagName] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingTag, setDeletingTag] = useState<TagWithSpaces | null>(null);
@@ -76,6 +97,17 @@ const AdminTags = () => {
 
   const [actionLoading, setActionLoading] = useState(false);
 
+  const fetchCategories = async () => {
+    try {
+      const response = await getSpaceTagCategories();
+      if (response.status === 200 && response.data?.data) {
+        setCategories(response.data.data);
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch categories:", error);
+    }
+  };
+
   const fetchTagsAndSpaces = async () => {
     try {
       setLoading(true);
@@ -84,6 +116,7 @@ const AdminTags = () => {
         limit,
         search: searchQuery.trim() || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
+        categoryId: categoryFilter ? Number(categoryFilter) : undefined,
       };
 
       const response = await getAllAdminTags(params);
@@ -111,25 +144,34 @@ const AdminTags = () => {
   };
 
   useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
     fetchTagsAndSpaces();
-  }, [currentPage, searchQuery, statusFilter]);
+  }, [currentPage, searchQuery, statusFilter, categoryFilter]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, categoryFilter]);
 
   const handleCreateTag = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTagName.trim()) return;
+    if (!newTagName.trim() || !newTagCategoryId) return;
 
     try {
       setActionLoading(true);
-      const response = await createAdminTag({ name: newTagName.trim(), status: "active" });
+      const response = await createAdminTag({
+        name: newTagName.trim(),
+        categoryId: Number(newTagCategoryId),
+        status: "active",
+      });
       if (response.status === 200 || response.status === 201) {
         toast.success("Admin tag created successfully");
         setCreateDialogOpen(false);
         setNewTagName("");
+        setNewTagCategoryId("");
         fetchTagsAndSpaces();
       }
     } catch (error: any) {
@@ -146,12 +188,19 @@ const AdminTags = () => {
 
     try {
       setActionLoading(true);
-      const response = await updateAdminTag(editingTag.id, { name: editTagName.trim() });
+      const payload: { name?: string; categoryId?: number } = { name: editTagName.trim() };
+      // Only send categoryId if it was changed
+      const newCatId = editCategoryId ? Number(editCategoryId) : undefined;
+      if (newCatId && newCatId !== editingTag.categoryId) {
+        payload.categoryId = newCatId;
+      }
+      const response = await updateAdminTag(editingTag.id, payload);
       if (response.status === 200) {
-        toast.success("Tag name updated successfully");
+        toast.success("Tag updated successfully");
         setEditDialogOpen(false);
         setEditingTag(null);
         setEditTagName("");
+        setEditCategoryId("");
         fetchTagsAndSpaces();
       }
     } catch (error: any) {
@@ -199,6 +248,7 @@ const AdminTags = () => {
   const triggerEdit = (tag: TagWithSpaces) => {
     setEditingTag(tag);
     setEditTagName(tag.name);
+    setEditCategoryId(tag.categoryId?.toString() || "");
     setEditDialogOpen(true);
   };
 
@@ -234,6 +284,18 @@ const AdminTags = () => {
       ),
     },
     {
+      key: "category",
+      header: "Category",
+      cell: (tag: TagWithSpaces) => (
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${tag.category
+            ? "text-indigo-700 bg-indigo-50 border-indigo-100"
+            : "text-gray-400 bg-gray-50 border-gray-100"
+          }`}>
+          {tag.category?.name ?? "—"}
+        </span>
+      ),
+    },
+    {
       key: "spacesCount",
       header: "Linked Spaces",
       cell: (tag: TagWithSpaces) => (
@@ -253,9 +315,8 @@ const AdminTags = () => {
             disabled={actionLoading}
           />
           <span
-            className={`text-xs font-semibold ${
-              tag.status === "active" ? "text-green-600" : "text-gray-400"
-            }`}
+            className={`text-xs font-semibold ${tag.status === "active" ? "text-green-600" : "text-gray-400"
+              }`}
           >
             {tag.status === "active" ? "Active" : "Inactive"}
           </span>
@@ -334,6 +395,26 @@ const AdminTags = () => {
                 className="pl-9 bg-white border-gray-200 rounded-xl"
               />
             </div>
+
+            {/* Category Filter */}
+            <Select value={categoryFilter} onValueChange={(val) => setCategoryFilter(val === "all" ? "" : val)}>
+              <SelectTrigger className="w-full sm:w-60 bg-white border-gray-200 rounded-xl h-[40px] px-3">
+                <div className="flex items-center gap-2 text-sm min-w-0 overflow-hidden w-full">
+                  <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <div className="truncate min-w-0 flex-1 text-left">
+                    <SelectValue placeholder="All Categories" />
+                  </div>
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id.toString()}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Button
@@ -423,7 +504,10 @@ const AdminTags = () => {
       </Dialog>
 
       {/* Create Tag Modal */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog open={createDialogOpen} onOpenChange={(open) => {
+        setCreateDialogOpen(open);
+        if (!open) { setNewTagName(""); setNewTagCategoryId(""); }
+      }}>
         <DialogContent className="max-w-md rounded-2xl bg-white p-6 border-0 shadow-lg">
           <form onSubmit={handleCreateTag}>
             <DialogHeader>
@@ -432,23 +516,45 @@ const AdminTags = () => {
                 Create New Admin Tag
               </DialogTitle>
               <DialogDescription className="text-gray-500 text-sm mt-1">
-                Enter a unique name for the new tag. This tag will become available for assignment to properties.
+                Select a category and enter a unique name for the new tag. This tag will become available for assignment to properties.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="my-4">
-              <label htmlFor="tagName" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Tag Name
-              </label>
-              <Input
-                id="tagName"
-                type="text"
-                required
-                placeholder="e.g. Photography, Dance, Yoga"
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                className="w-full bg-white border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl"
-              />
+            <div className="my-4 space-y-4">
+              {/* Category Dropdown */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <Select value={newTagCategoryId} onValueChange={setNewTagCategoryId}>
+                  <SelectTrigger className="w-full bg-white border-gray-200 rounded-xl">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tag Name */}
+              <div>
+                <label htmlFor="tagName" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Tag Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="tagName"
+                  type="text"
+                  required
+                  placeholder="e.g. Photography, Dance, Yoga"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  className="w-full bg-white border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl"
+                />
+              </div>
             </div>
 
             <DialogFooter className="gap-2">
@@ -463,7 +569,7 @@ const AdminTags = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={actionLoading || !newTagName.trim()}
+                disabled={actionLoading || !newTagName.trim() || !newTagCategoryId}
                 className="rounded-xl px-4 py-2 flex items-center gap-1.5 shadow-sm font-semibold"
               >
                 {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -474,33 +580,55 @@ const AdminTags = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Tag Name Modal */}
+      {/* Edit Tag Modal */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl bg-white p-6 border-0 shadow-lg">
           <form onSubmit={handleEditTagName}>
             <DialogHeader>
               <DialogTitle className="text-gray-900 font-bold flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-indigo-600" />
-                Rename Tag
+                Edit Tag
               </DialogTitle>
               <DialogDescription className="text-gray-500 text-sm mt-1">
-                Change the display name of this admin tag.
+                Update the category or name of this admin tag.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="my-4">
-              <label htmlFor="editTagName" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                New Tag Name
-              </label>
-              <Input
-                id="editTagName"
-                type="text"
-                required
-                placeholder="Enter new name"
-                value={editTagName}
-                onChange={(e) => setEditTagName(e.target.value)}
-                className="w-full bg-white border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl"
-              />
+            <div className="my-4 space-y-4">
+              {/* Category Dropdown */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Category
+                </label>
+                <Select value={editCategoryId} onValueChange={setEditCategoryId}>
+                  <SelectTrigger className="w-full bg-white border-gray-200 rounded-xl">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tag Name */}
+              <div>
+                <label htmlFor="editTagName" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Tag Name
+                </label>
+                <Input
+                  id="editTagName"
+                  type="text"
+                  required
+                  placeholder="Enter new name"
+                  value={editTagName}
+                  onChange={(e) => setEditTagName(e.target.value)}
+                  className="w-full bg-white border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl"
+                />
+              </div>
             </div>
 
             <DialogFooter className="gap-2">
@@ -515,7 +643,11 @@ const AdminTags = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={actionLoading || !editTagName.trim() || editTagName.trim() === editingTag?.name}
+                disabled={
+                  actionLoading ||
+                  !editTagName.trim() ||
+                  (editTagName.trim() === editingTag?.name && editCategoryId === (editingTag?.categoryId?.toString() || ""))
+                }
                 className="rounded-xl px-4 py-2 flex items-center gap-1.5 shadow-sm font-semibold"
               >
                 {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

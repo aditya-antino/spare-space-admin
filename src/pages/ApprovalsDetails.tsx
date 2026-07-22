@@ -22,6 +22,8 @@ import {
   Eye,
   Star,
   Tag,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { fallbackMessages } from "@/constants/fallbackMessages";
@@ -175,12 +177,27 @@ interface Property {
   state?: string;
 
   spaceType?: string[];
+
+  tags?: Array<
+    | {
+        id: number;
+        name?: string;
+        status?: string;
+      }
+    | number
+  >;
 }
 
 interface AdminTag {
   id: number;
   name: string;
   status?: string;
+}
+
+interface TagCategoryGroup {
+  categoryName: string;
+  activeTagsCount?: number;
+  tags: AdminTag[];
 }
 
 const PropertyDetailsPage = () => {
@@ -195,10 +212,11 @@ const PropertyDetailsPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
-  const [allTags, setAllTags] = useState<AdminTag[]>([]);
+  const [tagCategories, setTagCategories] = useState<TagCategoryGroup[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [tempTags, setTempTags] = useState<number[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
 
   const handleToggleTag = (tagId: number) => {
     setTempTags((prev) =>
@@ -206,6 +224,12 @@ const PropertyDetailsPage = () => {
     );
   };
 
+  const toggleCategoryOpen = (catName: string) => {
+    setOpenCategories((prev) => ({
+      ...prev,
+      [catName]: !prev[catName],
+    }));
+  };
 
   const getPropertyDetail = async () => {
     try {
@@ -243,10 +267,16 @@ const PropertyDetailsPage = () => {
         }
 
         // Parse allActiveTags from property details response
-        if (data.allActiveTags && Array.isArray(data.allActiveTags)) {
-          setAllTags(data.allActiveTags);
+        if (data.allActiveTags) {
+          if (data.allActiveTags.categories && Array.isArray(data.allActiveTags.categories)) {
+            setTagCategories(data.allActiveTags.categories);
+          } else if (Array.isArray(data.allActiveTags)) {
+            setTagCategories([{ categoryName: "General Tags", tags: data.allActiveTags }]);
+          } else {
+            setTagCategories([]);
+          }
         } else {
-          setAllTags([]);
+          setTagCategories([]);
         }
       }
     } catch (error) {
@@ -1491,20 +1521,69 @@ const PropertyDetailsPage = () => {
                     <span className="text-xs">Loading tags...</span>
                   </div>
                 ) : !isEditing ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-4">
                     {selectedTags.length > 0 ? (
-                      selectedTags.map((tagId) => {
-                        const tag = allTags.find((t) => t.id === tagId);
-                        if (!tag) return null;
-                        return (
-                          <span
-                            key={tag.id}
-                            className="px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200 shadow-sm bg-gray-100 text-gray-800 border-gray-200"
-                          >
-                            {tag.name}
-                          </span>
-                        );
-                      })
+                      (() => {
+                        const groupedMap = new Map<string, { id: number; name: string }[]>();
+                        selectedTags.forEach((tagId) => {
+                          let foundCategory = "Uncategorized";
+                          let tagName = "";
+
+                          for (const cat of tagCategories) {
+                            const matched = cat.tags.find((t) => t.id === tagId);
+                            if (matched) {
+                              foundCategory = cat.categoryName;
+                              tagName = matched.name;
+                              break;
+                            }
+                          }
+
+                          if (!tagName && formData?.tags) {
+                            const tObj = formData.tags.find(
+                              (t: any) => (typeof t === "object" ? t.id : t) === tagId
+                            );
+                            if (tObj && typeof tObj === "object") {
+                              tagName = tObj.name || `Tag #${tagId}`;
+                            } else if (tObj) {
+                              tagName = `Tag #${tagId}`;
+                            }
+                          }
+
+                          if (tagName) {
+                            if (!groupedMap.has(foundCategory)) {
+                              groupedMap.set(foundCategory, []);
+                            }
+                            groupedMap.get(foundCategory)!.push({ id: tagId, name: tagName });
+                          }
+                        });
+
+                        if (groupedMap.size === 0) {
+                          return (
+                            <p className="text-sm text-gray-500 italic py-2">
+                              No admin tags assigned to this space yet.
+                            </p>
+                          );
+                        }
+
+                        return Array.from(groupedMap.entries()).map(([catName, tags]) => (
+                          <div key={catName} className="space-y-1.5">
+                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
+                              {catName}
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {tags.map((tag) => (
+                                <span
+                                  key={tag.id}
+                                  className="px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200 shadow-sm bg-indigo-50 text-indigo-800 border-indigo-200 flex items-center gap-1.5"
+                                >
+                                  <Tag className="w-3 h-3 text-indigo-600" />
+                                  {tag.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()
                     ) : (
                       <p className="text-sm text-gray-500 italic py-2">
                         No admin tags assigned to this space yet.
@@ -1512,37 +1591,92 @@ const PropertyDetailsPage = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <p className="text-xs text-gray-500 font-medium">Select tags to assign to this space:</p>
-                    <div className="max-h-60 overflow-y-auto pr-1 space-y-2">
-                      {allTags.filter((tag) => tag.status !== "in-active").map((tag) => {
-                        const isChecked = tempTags.includes(tag.id);
-                        return (
-                          <div
-                            key={tag.id}
-                            onClick={() => handleToggleTag(tag.id)}
-                            className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isChecked
-                              ? "bg-indigo-50/40 border-indigo-200 text-indigo-900 shadow-sm"
-                              : "hover:bg-gray-50 border-gray-100 text-gray-700 hover:border-gray-200"
-                              }`}
-                          >
-                            <span className="flex items-center gap-2 flex-1">
-                              <span className="text-sm font-semibold select-none">
-                                {tag.name}
-                              </span>
-                            </span>
-                            <div className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => { }} // Controlled by onClick
-                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                              />
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500 font-medium mb-3">
+                      Select categories below to view and assign tags:
+                    </p>
+
+                    {tagCategories.length > 0 ? (
+                      <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                        {tagCategories.map((cat, catIdx) => {
+                          const isOpen = openCategories[cat.categoryName] ?? (catIdx === 0);
+                          const selectedCountInCat = cat.tags.filter((t) => tempTags.includes(t.id)).length;
+
+                          return (
+                            <div
+                              key={cat.categoryName}
+                              className="border border-gray-200/80 rounded-xl overflow-hidden bg-white transition-all"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => toggleCategoryOpen(cat.categoryName)}
+                                className="w-full flex items-center justify-between px-3.5 py-3 bg-gray-50/60 hover:bg-gray-100/60 transition-colors text-left"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-semibold text-sm text-gray-800 truncate">
+                                    {cat.categoryName}
+                                  </span>
+                                  {selectedCountInCat > 0 && (
+                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                      {selectedCountInCat} selected
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400 font-normal">
+                                    {cat.tags.length} {cat.tags.length === 1 ? "tag" : "tags"}
+                                  </span>
+                                  {isOpen ? (
+                                    <ChevronUp className="w-4 h-4 text-gray-400" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                                  )}
+                                </div>
+                              </button>
+
+                              {isOpen && (
+                                <div className="p-2 bg-white border-t border-gray-100 space-y-1">
+                                  {cat.tags.length > 0 ? (
+                                    cat.tags.map((tag) => {
+                                      const isChecked = tempTags.includes(tag.id);
+                                      return (
+                                        <div
+                                          key={tag.id}
+                                          onClick={() => handleToggleTag(tag.id)}
+                                          className={`flex items-center justify-between px-3 py-2 rounded-lg border cursor-pointer transition-all duration-150 ${
+                                            isChecked
+                                              ? "bg-indigo-50/60 border-indigo-200 text-indigo-900"
+                                              : "hover:bg-gray-50 border-gray-100 text-gray-700"
+                                          }`}
+                                        >
+                                          <span className="text-xs font-medium select-none">
+                                            {tag.name}
+                                          </span>
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => {}}
+                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                                          />
+                                        </div>
+                                      );
+                                    })
+                                  ) : (
+                                    <p className="text-xs text-gray-400 italic py-1 px-2">
+                                      No active tags in this category.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic py-2">
+                        No categories or tags available.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

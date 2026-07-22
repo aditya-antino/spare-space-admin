@@ -34,18 +34,24 @@ const updatePropertyDetails = async (
   return response;
 };
 
+//get space tag categories
+const getSpaceTagCategories = async () => {
+  const response = await axiosInstance.get(`admin/space-tag-categories`);
+  return response;
+};
+
 //get all admin tags
-const getAllAdminTags = async (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
+const getAllAdminTags = async (params?: { page?: number; limit?: number; search?: string; status?: string; categoryId?: number }) => {
   const response = await axiosInstance.get(`admin/space-tags`, { params });
   return response;
 };
 //create admin tag
-const createAdminTag = async (payload: { name: string; status?: string }) => {
+const createAdminTag = async (payload: { name: string; categoryId: number; status?: string }) => {
   const response = await axiosInstance.post(`admin/space-tags`, payload);
   return response;
 };
 //update admin tag
-const updateAdminTag = async (id: number | string, payload: { name?: string; status?: string }) => {
+const updateAdminTag = async (id: number | string, payload: { name?: string; categoryId?: number; status?: string }) => {
   const response = await axiosInstance.put(`admin/space-tags/${id}`, payload);
   return response;
 };
@@ -64,6 +70,7 @@ export {
   getApprovalsList,
   approveProperty,
   updatePropertyDetails,
+  getSpaceTagCategories,
   getAllAdminTags,
   createAdminTag,
   updateAdminTag,
